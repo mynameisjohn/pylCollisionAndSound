@@ -27,8 +27,10 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 file(GLOB HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h)
 file(GLOB SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.py)
 
-# Create source group for scripts
+# Create source groups
 source_group("scripts" FILES ${SCRIPTS})
+source_group("Source" FILES ${SOURCES})
+source_group("Include" FILES ${HEADERS})
 
 # Pyliaison, which has its own folder and source file]
 file(GLOB PYL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/pyl/*.cpp)
