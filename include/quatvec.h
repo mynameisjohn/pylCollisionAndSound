@@ -35,6 +35,20 @@ struct quatvec
 		quat( q )
 	{}
 
+	inline quatvec& operator*( const quatvec& other )
+	{
+		// TODO This should check for type and handle that
+		// I think I did something with that in TestEngine2
+		vec += other.vec;
+		quat *= other.quat;
+		return *this;
+	}
+
+	inline quatvec& operator*=( const quatvec& other )
+	{
+		return *this * other;
+	}
+
 	inline glm::mat4 ToMat4() const
 	{
 		switch ( eType )
