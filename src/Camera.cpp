@@ -23,7 +23,7 @@ void Camera::InitPersp( float fovy, float aspect, float near, float far )
 // See how this would affect a vector pointing out in z
 vec3 Camera::GetView() const
 {
-	vec3( m_m4Proj * vec4( 0, 0, 1, 1 ) );
+	return vec3( m_m4Proj * vec4( 0, 0, 1, 1 ) );
 }
 
 Camera::Camera()
@@ -94,8 +94,8 @@ void Camera::Translate( vec3 t )
 }
 
 void Camera::Translate( vec2 t )
-{
-	m_qvTransform.vec += t;
+{	
+	m_qvTransform.vec += vec3( t, 0 );
 }
 
 void Camera::Rotate( fquat q )
