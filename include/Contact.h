@@ -3,6 +3,9 @@
 // Forward for RigidBody2D
 class RigidBody2D;
 
+// Forward for debugging
+class Drawable;
+
 #include <glm/vec2.hpp>
 #include <list>
 #include <array>
@@ -37,11 +40,15 @@ public:
 	class Solver
 	{
 	public:
+		Solver();
 		Solver( uint32_t nIterations );
 		uint32_t Solve( std::list<Contact>& liContacts );
 	private:
 		uint32_t m_nIterations;
 	};
+
+	// Init a drawable, for debugging purposes
+	void InitDrawable( std::array<Drawable *, 2> drPtrArr ) const;
 
 private:
 	// Some convenient unions

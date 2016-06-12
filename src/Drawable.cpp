@@ -17,7 +17,7 @@ Drawable::Drawable() :
 	m_qvTransform( quatvec::Type::TRT )
 {}
 
-bool Drawable::Init( std::string strIqmSrcFile, glm::vec4 v4Color, glm::vec2 v2Scale )
+bool Drawable::Init( std::string strIqmSrcFile, glm::vec4 v4Color, quatvec qvTransform, glm::vec2 v2Scale )
 {
 	if ( Drawable::s_PosHandle < 0 )
 	{
@@ -208,10 +208,10 @@ bool Drawable::Draw()
 	return s_ColorHandle;
 }
 
-/*static*/ bool Drawable::AddPrimitive( std::string strPrimFile, glm::vec4 v4Color, glm::vec2 v2Scale )
+/*static*/ bool Drawable::AddPrimitive( std::string strPrimFile, glm::vec4 v4Color, quatvec qvTransform, glm::vec2 v2Scale )
 {
 	Drawable D;
-	if ( D.Init( strPrimFile, v4Color, v2Scale ) )
+	if ( D.Init( strPrimFile, v4Color, qvTransform, v2Scale ) )
 	{
 		s_PrimitiveMap[strPrimFile] = D;
 		return true;

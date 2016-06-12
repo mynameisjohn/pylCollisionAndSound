@@ -3,6 +3,8 @@
 #include "CollisionFunctions.h"
 #include "GL_Util.h"
 #include "Util.h"
+#include "Drawable.h"
+#include <glm/vec4.hpp>
 
 Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec2 posB, const vec2 nrm, const float d ) :
 	m_pCollidingPair{ pA, pB },
@@ -96,6 +98,10 @@ float Contact::GetCurImpulse() const
 }
 
 // Contact Solver
+Contact::Solver::Solver():
+	m_nIterations(0)
+{}
+
 Contact::Solver::Solver( uint32_t nIterations ) :
 	m_nIterations( nIterations )
 {}
@@ -149,4 +155,18 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 	}
 
 	return uNumCollisions;
+}
+
+void Contact::InitDrawable( std::array<Drawable *, 2> drPtrArr ) const
+{
+	for ( Drawable * pDr : drPtrArr )
+	{
+		if ( pDr )
+		{
+			for ( glm::vec2 pos : m_v2Pos )
+			{
+				// NYI
+			}
+		}
+	}
 }

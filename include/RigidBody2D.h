@@ -11,7 +11,7 @@ struct RigidBody2D
 {
 	// All rigid bodies are the same type,
 	// but this enum dictates what they really are
-	enum class EType
+	enum class EType : int
 	{
 		None,
 		Circle,
@@ -99,7 +99,7 @@ struct OBB : public AABB
 
 struct FeaturePair
 {
-	enum class EType
+	enum class EType : int
 	{
 		F_V,
 		V_F,

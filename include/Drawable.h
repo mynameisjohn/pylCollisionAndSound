@@ -10,7 +10,7 @@ class Drawable
 {
 public:
 	Drawable();
-	bool Init( std::string strIqmSrcFile, glm::vec4 v4Color, glm::vec2 v2Scale );
+	bool Init( std::string strIqmSrcFile, glm::vec4 v4Color, quatvec qvTransform, glm::vec2 v2Scale );
 
 	glm::vec4 GetColor() const;
 	glm::vec3 GetPos() const;
@@ -40,7 +40,7 @@ public:
 	static void SetColorHandle( GLint h );
 	static GLint GetColorHandle();
 
-	static bool AddPrimitive( std::string strPrimFile, glm::vec4 v4Color, glm::vec2 v2Scale );
+	static bool AddPrimitive( std::string strPrimFile, glm::vec4 v4Color, quatvec qvTransform, glm::vec2 v2Scale );
 	static Drawable * GetPrimitive( std::string strPrimFile );
 	static bool DrawPrimitive( std::string strPrimFile );
 	
