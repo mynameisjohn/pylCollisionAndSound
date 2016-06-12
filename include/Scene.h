@@ -33,7 +33,13 @@ public:
 	bool InitDisplay( uint32_t glMajor, uint32_t glMinor, uint32_t iScreenW, uint32_t iScreenH, vec4 v4ClearColor );
 	
 	int AddDrawable( std::string strIqmFile, vec2 T, vec2 S, vec4 C );
-	int AddRigidBody( int iType, glm::vec2 v2Vel, glm::vec2 v2Pos, float fMass, float fElasticity, std::map<std::string, float> mapDetails );
+	
+	int AddRigidBody( RigidBody2D::EType eType, glm::vec2 v2Vel, glm::vec2 v2Pos, float fMass, float fElasticity, std::map<std::string, float> mapDetails );
+	template<typename T>
+	int AddRigidBody( T kType, glm::vec2 v2Vel, glm::vec2 v2Pos, float fMass, float fElasticity, std::map<std::string, float> mapDetails )
+	{
+		return AddRigidBody( (int) kType, v2Vel, v2Pos, fMass, fElasticity, mapDetails );
+	}
 
 private:
 	bool m_bQuitFlag;

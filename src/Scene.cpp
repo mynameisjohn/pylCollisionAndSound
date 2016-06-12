@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include "Util.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -25,14 +26,18 @@ Scene::~Scene()
 
 void Scene::Draw()
 {
+	// Clear the screen
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
+	// Bind the shader
 	auto sBind = m_Shader.ScopeBind();
 
+	// Get the camera mat as well as some handles
 	GLuint pmvHandle = m_Shader.GetHandle( "u_PMV" );
 	GLuint clrHandle = m_Shader.GetHandle( "u_Color" );
 	mat4 P = m_Camera.GetCameraMat();
 
+	// Draw every Drawable
 	for ( Drawable& dr : m_vDrawables )
 	{
 		mat4 PMV = P * dr.GetMV();
@@ -52,13 +57,43 @@ void Scene::Draw()
 		}
 	}
 
-
+	// Swap window
 	SDL_GL_SwapWindow( m_pWindow );
 }
 
 void Scene::Update()
 {
+	// Update the sound manager (should this happen here?)
 	m_SoundManager.Update();
+
+	// Reset the contact list and find contacts
+	int nCollisions( 0 );
+	float fTotalEnergy( 0.f );
+	m_liSpeculativeContacts.clear();
+
+	// Integrate objects
+	for ( RigidBody2D& rb : m_vRigidBodies )
+		rb.EulerAdvance( g_fTimeStep );
+
+	// Get out if there's less than 2
+	if ( m_vRigidBodies.size() < 2 )
+		return;
+
+	// Check every one against the other
+	for ( auto itOuter = m_vRigidBodies.begin(); itOuter != m_vRigidBodies.end(); ++itOuter )
+	{
+		for ( auto itInner = itOuter + 1; itInner != m_vRigidBodies.end(); ++itInner )
+		{
+			std::list<Contact> liNewContacts = RigidBody2D::GetSpeculativeContacts( &*itOuter, &*itInner );
+			m_liSpeculativeContacts.splice( m_liSpeculativeContacts.end(), liNewContacts );
+		}
+
+		// Increment total energy while we're at it
+		fTotalEnergy += itOuter->GetKineticEnergy();
+	}
+
+	// Solve contacts
+	m_ContactSolver.Solve( m_liSpeculativeContacts );
 }
 
 int Scene::AddDrawable( std::string strIqmFile, vec2 T, vec2 S, vec4 C )
@@ -77,11 +112,10 @@ int Scene::AddDrawable( std::string strIqmFile, vec2 T, vec2 S, vec4 C )
 	return (int) (m_vDrawables.size() - 1);
 }
 
-int Scene::AddRigidBody( int iType, glm::vec2 v2Vel, glm::vec2 v2Pos, float fMass, float fElasticity, std::map<std::string, float> mapDetails )
+int Scene::AddRigidBody( RigidBody2D::EType eType, glm::vec2 v2Vel, glm::vec2 v2Pos, float fMass, float fElasticity, std::map<std::string, float> mapDetails )
 {
 	try
 	{
-		RigidBody2D::EType eType = (RigidBody2D::EType)iType;
 		RigidBody2D rb;
 		switch ( eType )
 		{

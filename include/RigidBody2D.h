@@ -43,6 +43,7 @@ struct RigidBody2D
 	quatvec GetQuatVec() const;
 	glm::mat2 GetRotMat() const;
 	float GetInertia() const;
+	void EulerAdvance( float fDT );
 
 	// Until we get rid of this dumb list pattern. This is handled internally via a switch
 	static std::list<Contact> GetSpeculativeContacts( const RigidBody2D * pA, const RigidBody2D * pB );

@@ -4,11 +4,11 @@
 #include "CollisionFunctions.h"
 
 // Euler integrate rigid body translation/rotation
-void EulerAdvance( RigidBody2D * pBody )
+void RigidBody2D::EulerAdvance( float fDT )
 {
 	// You should try Verlet...
-	pBody->v2Center += g_fTimeStep * pBody->v2Vel;
-	pBody->fTheta += g_fTimeStep * pBody->fOmega;
+	v2Center += fDT * v2Vel;
+	fTheta += fDT * fOmega;
 }
 
 RigidBody2D::RigidBody2D() :
