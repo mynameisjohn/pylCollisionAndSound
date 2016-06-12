@@ -86,7 +86,7 @@ bool SoundManager::RegisterClip( std::string strClipName, std::string strHeadFil
 }
 
 // Called by main thread, locks mutex
-void SoundManager::incNumBufsCompleted()
+void SoundManager::getMessagesFromAudThread()
 {
 	// We gotta lock this while we mess with the public queue
 	std::lock_guard<std::mutex> lg( m_muAudioMutex );
@@ -109,11 +109,11 @@ void SoundManager::Update()
 {
 	// Just see if the audio thread has left any
 	// BufCompleted tasks for us
-	incNumBufsCompleted();
+	getMessagesFromAudThread();
 }
 
 // Called by audio thread, locks mutex
-void SoundManager::updateTaskQueue()
+void SoundManager::getMessagesFromMainThread()
 {
 	// Take any tasks the main thread has left us
 	// and put them into our queue
@@ -308,7 +308,7 @@ void SoundManager::fill_audio_impl( Uint8 * pStream, int nBytesToFill )
 
 	// Get tasks from public thread and handle them
 	// Also let them know a buffer is about to complete
-	updateTaskQueue();
+	getMessagesFromMainThread();
 
 	// Nothing to do
 	if ( m_liVoices.empty() )

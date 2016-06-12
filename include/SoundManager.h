@@ -91,8 +91,8 @@ private:
 	void fill_audio_impl( Uint8 * pStream, int nBytesToFill );
 
 	// Called by audio thread to get messages from main thread
-	void updateTaskQueue();
+	void getMessagesFromMainThread();
 
 	// Called from Update to find out if we've filled some buffers
-	void incNumBufsCompleted();
+	void getMessagesFromAudThread();
 };
