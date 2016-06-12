@@ -1,15 +1,8 @@
 #include "Contact.h"
 #include "RigidBody2D.h"
+#include "CollisionFunctions.h"
 #include "GL_Util.h"
-
-// Smol
-const float kEPS = 0.001f;
-const float g_fTimeStep = 0.005f;
-
-vec2 perp( vec2 v )
-{
-	return vec2( -v.y, v.x );
-}
+#include "Util.h"
 
 Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec2 posB, const vec2 nrm, const float d ) :
 	m_pCollidingPair{ pA, pB },

@@ -3,6 +3,7 @@
 #include <chrono>
 #include <string>
 #include <iostream>
+#include <algorithm>
 
 // Smol
 const float kEPS = 0.001f;
@@ -13,6 +14,14 @@ inline float remap( float x, float m0, float M0, float m1, float M1 )
 {
 	return m1 + ((x - m0) / (M0 - m0)) * (M1 - m1);
 }
+
+template<typename T>
+T clamp( T x, T min, T max )
+{
+	return std::min( std::max( x, min ), max );
+}
+
+bool feq( float a, float b, float diff = kEPS );
 
 // Always useful
 using Time = std::chrono::high_resolution_clock;

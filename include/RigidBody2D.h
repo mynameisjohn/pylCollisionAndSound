@@ -42,9 +42,7 @@ struct RigidBody2D
 	float GetKineticEnergy() const;
 	quatvec GetQuatVec() const;
 	glm::mat2 GetRotMat() const;
-
-	// The only virtual function I'll allow... for now
-	virtual float GetInertia() const { return 0.f; }
+	float GetInertia() const;
 
 	// Until we get rid of this dumb list pattern. This is handled internally via a switch
 	static std::list<Contact> GetSpeculativeContacts( const RigidBody2D * pA, const RigidBody2D * pB );
@@ -62,6 +60,7 @@ protected:
 struct Circle : public RigidBody2D
 {
 	Circle() = delete;
+	float Radius() const;
 
 	// Static creation function, returns a RigidBody2D
 	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float radius );
@@ -80,6 +79,7 @@ struct AABB : public RigidBody2D
 	float Bottom() const;
 	glm::vec2 Clamp( const glm::vec2 p ) const;
 	glm::vec2 GetFaceNormalFromPoint( const glm::vec2 p ) const;
+	glm::vec2 HalfDim() const;
 
 	// Static creation function, returns a RigidBody2D
 	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R );
@@ -95,4 +95,20 @@ struct OBB : public AABB
 	// Static creation function, returns a RigidBody2D
 	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th = 0.f );
 	static RigidBody2D Create( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h, float th = 0.f );
+};
+
+struct FeaturePair
+{
+	enum class EType
+	{
+		F_V,
+		V_F,
+		N
+	};
+	float dist;
+	float c_dist;
+	int fIdx;
+	int vIdx;
+	EType T;
+	FeaturePair( float d, float cd = -1, int f = -1, int v = -1, EType t = EType::N );
 };

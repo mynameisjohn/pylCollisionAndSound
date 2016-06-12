@@ -1,6 +1,7 @@
 #include "RigidBody2D.h"
 #include "GL_Util.h"
 #include "Util.h"
+#include "CollisionFunctions.h"
 
 // Euler integrate rigid body translation/rotation
 void EulerAdvance( RigidBody2D * pBody )
@@ -62,182 +63,60 @@ glm::mat2 RigidBody2D::GetRotMat() const
 	return glm::mat2( vec2( c, s ), vec2( -s, c ) );
 }
 
-//////////////////////////////////////////////////////////////////////////////
-//
-//std::list<Contact> GetContacts( Circle * pA, Circle * pB )
-//{
-//
-//}
-//
-//std::list<Contact> GetContacts( Circle * pCirc, AABB * pAABB )
-//{
-//
-//}
-//
-//std::list<Contact> GetContacts( Circle * pCirc, OBB * pObb )
-//{
-//
-//}
-//
-//////////////////////////////////////////////////////////////////////////////
-//
-//std::list<Contact> GetContacts( AABB * pA, AABB * pB )
-//{
-//
-//}
-//
-//std::list<Contact> GetContacts( AABB * pAABB, OBB * pOBB )
-//{
-//
-//}
-//
-//////////////////////////////////////////////////////////////////////////////
-//
-//std::list<Contact> GetContacts( OBB * pA, OBB * pB )
-//{
-//
-//}
-//
-//////////////////////////////////////////////////////////////////////////////
-//
-///*static*/ std::list<Contact> RigidBody2D::GetSpeculativeContacts( const RigidBody2D * pA, const RigidBody2D * pB )
-//{
-//	switch ( pA->eType )
-//	{
-//		case EType::Circle: 
-//		{
-//			Circle * pCircA = (Circle *) pA;
-//			switch ( pB->eType )
-//			{
-//				case EType::Circle:
-//					return GetContacts( pCircA, (Circle *) pB );
-//				case EType::AABB:
-//					return GetContacts( pCircA, (AABB *) pB );
-//				case EType::OBB:
-//					return GetContacts( pCircA, (OBB *) pB );
-//			}
-//			break;
-//		}
-//		case EType::AABB:
-//		{
-//			AABB * pBoxA = (AABB *) pA;
-//			switch ( pB->eType )
-//			{
-//				case EType::Circle:
-//					return GetContacts( (Circle *) pB, pBoxA );
-//				case EType::AABB:
-//					return GetContacts( pBoxA, (AABB *) pB );
-//				case EType::OBB:
-//					return GetContacts( pBoxA, (OBB *) pB );
-//			}
-//			break;
-//		}
-//		case EType::OBB:
-//		{
-//			OBB * pBoxA = (OBB *) pA;
-//			switch ( pB->eType )
-//			{
-//				case EType::Circle:
-//					return GetContacts( (Circle *) pB, pBoxA );
-//				case EType::AABB:
-//					return GetContacts( (AABB *) pB, pBoxA );
-//				case EType::OBB:
-//					return GetContacts( (OBB *) pA, (OBB *) pB );
-//			}
-//			break;
-//		}
-//	}
-//
-//	throw std::runtime_error( "Error: Invalid rigid body type!" );
-//	return{};
-//}
-
 ////////////////////////////////////////////////////////////////////////////
 
-/*static*/ RigidBody2D Circle::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float radius )
+/*static*/ std::list<Contact> RigidBody2D::GetSpeculativeContacts( const RigidBody2D * pA, const RigidBody2D * pB )
 {
-	RigidBody2D ret = RigidBody2D::Create( vel, c, mass, elasticity );
-	ret.circData.fRadius = radius;
-	ret.eType = RigidBody2D::EType::Circle;
-	return ret;
-}
-
-////////////////////////////////////////////////////////////////////////////
-
-float AABB::Width() const
-{
-	return 2.f * boxData.v2HalfDim.x;
-}
-
-float AABB::Height() const
-{
-	return 2.f * boxData.v2HalfDim.y;
-}
-
-float AABB::Left() const
-{
-	return v2Center.x - boxData.v2HalfDim.x;
-}
-
-float AABB::Right() const
-{
-	return v2Center.x + boxData.v2HalfDim.x;
-}
-
-float AABB::Top() const
-{
-	return v2Center.y + boxData.v2HalfDim.y;
-}
-
-float AABB::Bottom() const
-{
-	return v2Center.y - boxData.v2HalfDim.y;
-}
-
-glm::vec2 AABB::Clamp( const glm::vec2 p ) const
-{
-	return glm::clamp( p, v2Center - boxData.v2HalfDim, v2Center + boxData.v2HalfDim );
-}
-
-glm::vec2 AABB::GetFaceNormalFromPoint( const glm::vec2 p ) const
-{
-	vec2 n;
-
-	if ( p.x < Right() && p.x > Left() )
+	switch ( pA->eType )
 	{
-		if ( p.y < Bottom() )
-			n = vec2( 0, -1 );
-		else
-			n = vec2( 0, 1 );
-	}
-	else
-	{
-		if ( p.x < Left() )
-			n = vec2( -1, 0 );
-		else
-			n = vec2( 1, 0 );
+		case EType::Circle: 
+		{
+			Circle * pCircA = (Circle *) pA;
+			switch ( pB->eType )
+			{
+				case EType::Circle:
+					return GetSpecContacts( pCircA, (Circle *) pB );
+				case EType::AABB:
+					return GetSpecContacts( pCircA, (AABB *) pB );
+				case EType::OBB:
+					return GetSpecContacts( pCircA, (OBB *) pB );
+			}
+			break;
+		}
+		case EType::AABB:
+		{
+			AABB * pBoxA = (AABB *) pA;
+			switch ( pB->eType )
+			{
+				case EType::Circle:
+					return GetSpecContacts( (Circle *) pB, pBoxA );
+				case EType::AABB:
+					return GetSpecContacts( pBoxA, (AABB *) pB );
+				case EType::OBB:
+					return GetSpecContacts( pBoxA, (OBB *) pB );
+			}
+			break;
+		}
+		case EType::OBB:
+		{
+			OBB * pBoxA = (OBB *) pA;
+			switch ( pB->eType )
+			{
+				case EType::Circle:
+					return GetSpecContacts( (Circle *) pB, pBoxA );
+				case EType::AABB:
+					return GetSpecContacts( (AABB *) pB, pBoxA );
+				case EType::OBB:
+					return GetSpecContacts( (OBB *) pA, (OBB *) pB );
+			}
+			break;
+		}
 	}
 
-	return n;
+	throw std::runtime_error( "Error: Invalid rigid body type!" );
+	return{};
 }
 
-/*static*/ RigidBody2D AABB::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R )
-{
-	RigidBody2D ret = RigidBody2D::Create( vel, c, mass, elasticity );
-	ret.boxData.v2HalfDim = v2R;
-	ret.eType = RigidBody2D::EType::AABB;
-	return ret;
-}
-
-/*static*/ RigidBody2D AABB::Create( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h )
-{
-	RigidBody2D ret = RigidBody2D::Create( vel, vec2( x, y ), mass, elasticity );
-	ret.boxData.v2HalfDim = vec2( w, h ) / 2.f;
-	ret.eType = RigidBody2D::EType::AABB;
-	return ret;
-}
-
-////////////////////////////////////////////////////////////////////////////
 
 glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 {
@@ -260,4 +139,49 @@ glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 	ret.boxData.v2HalfDim = vec2( w, h ) / 2.f;
 	ret.eType = RigidBody2D::EType::OBB;
 	return ret;
+}
+
+float RigidBody2D::GetInertia() const
+{
+	switch ( eType )
+	{
+		case RigidBody2D::EType::Circle:
+			return 0.5f * fMass * pow( circData.fRadius, 2 );
+		case RigidBody2D::EType::AABB:
+		case RigidBody2D::EType::OBB:
+			return (fMass / 3.f) * (pow( boxData.v2HalfDim.x, 2 ) + pow( boxData.v2HalfDim.y, 2 ));
+	}
+
+	throw std::runtime_error( "Error: Inertia queried for invalid rigid body" );
+	return 0.f;
+}
+
+// FeaturePair stuff, not sure where this belongs
+FeaturePair::FeaturePair( float d, float cd, int f, int v, EType t ) :
+	dist( d ),
+	c_dist( cd ),
+	fIdx( f ),
+	vIdx( v ),
+	T( t )
+{}
+
+// I need a good file for these
+vec2 perp( vec2 v )
+{
+	return vec2( -v.y, v.x );
+}
+
+vec2 maxComp( vec2 v )
+{
+	if ( feq( v.x, v.y ) )
+		return v;
+	else if ( fabs( v.x ) > fabs( v.y ) )
+		return vec2( v.x, 0.f );
+	else
+		return vec2( 0.f, v.y );
+}
+
+bool feq( float a, float b, float diff )
+{
+	return fabs( a - b ) < diff;
 }
