@@ -11,8 +11,9 @@ struct RigidBody2D
 {
 	// All rigid bodies are the same type,
 	// but this enum dictates what they really are
-	enum EType
+	enum class EType
 	{
+		None,
 		Circle,
 		AABB,
 		OBB
@@ -43,7 +44,7 @@ struct RigidBody2D
 	glm::mat2 GetRotMat() const;
 
 	// The only virtual function I'll allow... for now
-	virtual float GetInertia() const;
+	virtual float GetInertia() const { return 0.f; }
 
 	// Until we get rid of this dumb list pattern. This is handled internally via a switch
 	static std::list<Contact> GetSpeculativeContacts( const RigidBody2D * pA, const RigidBody2D * pB );
@@ -52,6 +53,7 @@ struct RigidBody2D
 	// by class static methods from child classes (?)
 protected:
 	RigidBody2D( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float th = 0.f );
+	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float th = 0.f );
 };
 
 // I'm not really sure about this...
@@ -59,15 +61,16 @@ protected:
 // no internal members I think we're good
 struct Circle : public RigidBody2D
 {
-	// Static creation function, returns a RigidBody2D
-	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float radius, float th = 0.f );
+	Circle() = delete;
 
-protected:
-	Circle( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float radius, float th = 0.f );
+	// Static creation function, returns a RigidBody2D
+	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float radius );
 };
 
-struct AABB
+struct AABB : public RigidBody2D
 {
+	AABB() = delete;
+
 	// useful things
 	float Width() const;
 	float Height() const;
@@ -75,27 +78,21 @@ struct AABB
 	float Right() const;
 	float Top() const;
 	float Bottom() const;
-	glm::vec2 Clamp( glm::vec2 p ) const;
-	glm::vec2 GetFaceNormalFromPoint( glm::vec2 p ) const;
+	glm::vec2 Clamp( const glm::vec2 p ) const;
+	glm::vec2 GetFaceNormalFromPoint( const glm::vec2 p ) const;
 
 	// Static creation function, returns a RigidBody2D
 	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R );
 	static RigidBody2D Create( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h );
-
-protected:
-	AABB( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R );
-	AABB( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h );
 };
 
-struct OBB
+struct OBB : public AABB
 {
-	glm::vec2 WorldSpaceClamp() const;
+	OBB() = delete;
+
+	glm::vec2 WorldSpaceClamp( const glm::vec2 p ) const;
 
 	// Static creation function, returns a RigidBody2D
 	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th = 0.f );
 	static RigidBody2D Create( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h, float th = 0.f );
-
-protected:
-	OBB( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th = 0.f );
-	OBB( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h, float th = 0.f );
 };

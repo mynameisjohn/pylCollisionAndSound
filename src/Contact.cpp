@@ -4,7 +4,7 @@
 
 // Smol
 const float kEPS = 0.001f;
-const float fGlobalTimeStep = 0.005f;
+const float g_fTimeStep = 0.005f;
 
 vec2 perp( vec2 v )
 {
@@ -130,7 +130,7 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 			float relNv = vB_N - vA_N;
 
 			// Find out how much you'd remove to have them just touch
-			float remove = relNv + c.GetDistance() / fGlobalTimeStep;
+			float remove = relNv + c.GetDistance() / g_fTimeStep;
 
 			// Detect collision
 			bool colliding = (remove < -kEPS);
