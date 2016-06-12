@@ -22,7 +22,7 @@ struct RigidBody2D
 	float fMass;		// Mass
 	float fElast;		// Elasticity
 	float fTheta;		// Rotation angle
-	float rOmega;		// Angular velocity
+	float fOmega;		// Angular velocity
 	glm::vec2 v2Vel;	// Velocity
 	glm::vec2 v2Center;	// Center position
 
@@ -41,6 +41,9 @@ struct RigidBody2D
 	float GetKineticEnergy() const;
 	quatvec GetQuatVec() const;
 	glm::mat2 GetRotMat() const;
+
+	// The only virtual function I'll allow... for now
+	virtual float GetInertia() const;
 
 	// Until we get rid of this dumb list pattern. This is handled internally via a switch
 	static std::list<Contact> GetSpeculativeContacts( const RigidBody2D * pA, const RigidBody2D * pB );

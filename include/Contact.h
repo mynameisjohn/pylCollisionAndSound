@@ -28,12 +28,17 @@ public:
 	float GetVelN_A() const;
 	float GetVelN_B() const;
 
+	float GetDistance() const;
+	float GetCoefRest() const;
+	float GetInertialDenom() const;
+	float GetCurImpulse() const;
+
 	// The Solver class, which really only does one thing...
 	class Solver
 	{
 	public:
 		Solver( uint32_t nIterations );
-		int Solve( std::list<Contact> liContacts );
+		uint32_t Solve( std::list<Contact>& liContacts );
 	private:
 		uint32_t m_nIterations;
 	};
@@ -43,7 +48,7 @@ private:
 	union
 	{	// Pointers to the two objects that may collide
 		std::array<RigidBody2D *, 2> m_pCollidingPair;
-		struct { RigidBody2D * m_pA, *m_pA; };
+		struct { RigidBody2D * m_pA, *m_pB; };
 	};
 	union
 	{	// The positions of the contact points
@@ -60,4 +65,7 @@ private:
 	float m_fInvMassI;		// 1 / the impulse mass
 	float m_fCurImpulse;	// The accumulated impulse value
 	glm::vec2 m_v2Normal;	// The collision normal
+
+	// internal contact vel function
+	glm::vec2 getContactVel( int i ) const;
 };
