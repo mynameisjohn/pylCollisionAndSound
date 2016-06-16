@@ -1,17 +1,16 @@
 #pragma once
 
-#include <SDL.h>
-#include <SDL_audio.h>
-
 #include <string>
 #include <map>
 #include <list>
 #include <mutex>
 #include <stdint.h>
+#include <memory>
 
 // Forwards for clip and voice
 class Clip;
 class Voice;
+struct SDL_AudioSpec;
 
 // The SoundManager class is our interface to SDL_Audio
 // It fields the callback from SDL Audio and passes data
@@ -68,17 +67,22 @@ public:
 	size_t GetNumSamplesInClip( std::string strClipName, bool bTail ) const;
 	SDL_AudioSpec const * GetAudioSpecPtr() const;
 
+	bool HandleCommand( Command cmd );
+	bool HandleCommands( std::list<Command> cmd );
+
+	Clip * GetClip( std::string strClipName ) const;
+
 	// Add a clip to storage, can be recalled later as a Voice
 	bool RegisterClip( std::string strClipName, std::string strHeadFile, std::string strTailFile, size_t uFadeDurationMS );
 
 	// SDL Audio callback, will end up calling fill_audio_impl on a SoundManager instance
-	static void FillAudio( void * pUserData, Uint8 * pStream, int nSamplesDesired );
+	static void FillAudio( void * pUserData, uint8_t * pStream, int nSamplesDesired );
 
 private:
 	bool m_bPlaying;						// Whether or not we are filling buffers of audio
 	size_t m_uMaxSampleCount;				// Sample count of longest loop
 	size_t m_uNumBufsCompleted;             // The number of buffers filled by the audio thread
-	SDL_AudioSpec m_AudioSpec;				// Audio spec, describes loop format
+	std::unique_ptr<SDL_AudioSpec> m_pAudioSpec;				// Audio spec, describes loop format
 
 	std::mutex m_muAudioMutex;				// Mutex controlling communication between audio and main threads
 	size_t m_uSamplePos;					// Current sample pos in playback
@@ -88,7 +92,7 @@ private:
 	std::list<Voice> m_liVoices;
 
 	// The actual callback function used to fill audio buffers
-	void fill_audio_impl( Uint8 * pStream, int nBytesToFill );
+	void fill_audio_impl( uint8_t * pStream, int nBytesToFill );
 
 	// Called by audio thread to get messages from main thread
 	void getMessagesFromMainThread();

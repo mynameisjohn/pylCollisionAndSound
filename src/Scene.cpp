@@ -2,6 +2,7 @@
 #include "Util.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <algorithm>
 
 Scene::Scene() :
 	m_bQuitFlag( false ),
@@ -165,18 +166,25 @@ const SoundManager * Scene::GetSoundManagerPtr() const
 
 const Shader * Scene::GetShaderPtr() const
 {
-	return (Shader *) &m_Shader;
+	return  &m_Shader;
 }
 
 const Camera * Scene::GetCameraPtr() const
 {
-	return (Camera *) &m_Camera;
+	return &m_Camera;
 }
 
 const Drawable * Scene::GetDrawable( const size_t drIdx ) const
 {
 	if ( drIdx < m_vDrawables.size() )
-		return (Drawable *) &m_vDrawables[drIdx];
+		return &m_vDrawables[drIdx];
+	return nullptr;
+}
+
+const RigidBody2D * Scene::GetRigidBody2D( const size_t rbIdx ) const
+{
+	if ( rbIdx < m_vRigidBodies.size() )
+		return &m_vRigidBodies[rbIdx];
 	return nullptr;
 }
 
@@ -195,10 +203,10 @@ void Scene::SetDrawContacts( bool bDrawContacts )
 	m_bDrawContacts = bDrawContacts;
 }
 
-bool Scene::InitDisplay( uint32_t glMajor, uint32_t glMinor, uint32_t iScreenW, uint32_t iScreenH, vec4 v4ClearColor )
+bool Scene::InitDisplay( std::string strWindowName, uint32_t glMajor, uint32_t glMinor, uint32_t iScreenW, uint32_t iScreenH, vec4 v4ClearColor )
 {
 	// Create Window (only used for keyboard input, as of now)
-	m_pWindow = SDL_CreateWindow( "3D Test",
+	m_pWindow = SDL_CreateWindow( strWindowName.c_str(),
 								  SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 								  iScreenW, iScreenH,
 								  SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
@@ -243,4 +251,16 @@ bool Scene::InitDisplay( uint32_t glMajor, uint32_t glMinor, uint32_t iScreenW, 
 
 	//For debugging
 	glLineWidth( 8.f );
+}
+
+// This is a dumb function...
+std::list<const Contact *> Scene::GetContacts() const
+{
+	std::list<const Contact *> liRet;
+	std::transform( m_liSpeculativeContacts.begin(), m_liSpeculativeContacts.end(), std::back_inserter( liRet ),
+					[] ( const Contact& c )
+	{
+		return &c;
+	} );
+	return liRet;
 }

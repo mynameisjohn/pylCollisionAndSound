@@ -51,6 +51,7 @@ namespace pyl
 		the python interpreter when it is initialized
 		*/
 		ModuleDef( const std::string& moduleName, const std::string& moduleDocs );
+		ModuleDef( const ModuleDef const * pParentMod, const std::string& moduleName, const std::string& moduleDocs );
 
 		// Private members
 	private:
@@ -359,6 +360,17 @@ namespace pyl
 		// Innocent functions
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/*! GetModuleDef
+		\brief Retreive a pointer to an existing pyl::Module definition
+
+		\param[in] moduleName The name of the module you'd like to retreive
+		\param[out] pModule A pointer to the module you've requested, returns nullptr if not found	
+
+		Use this function to get a pointer to a previously created module definition. If you plan on 
+		modifying the definition you must do it prior to initializing the interpreter
+		*/
+		static ModuleDef * GetModuleDef( const std::string moduleName );
+
 		/*! CreateModule
 		\brief Create a new pyl::Module object
 
@@ -371,8 +383,11 @@ namespace pyl
 		then that will be available to the interpreter via the __help__ function (?)
 		*/
 		template <typename tag>
-		static ModuleDef * CreateModuleDef( const std::string moduleName, const std::string moduleDocs = "" )
+		static ModuleDef * Create( const std::string moduleName, const std::string moduleDocs = "" )
 		{
+			if ( ModuleDef * pExistingDef = GetModuleDef( moduleName ) )
+				return pExistingDef;
+
 			// Add to map
 			ModuleDef& mod = s_mapPyModules[moduleName] = ModuleDef( moduleName, moduleDocs );
 
@@ -385,16 +400,23 @@ namespace pyl
 			return &mod;
 		}
 
-		/*! GetModuleDef
-		\brief Retreive a pointer to an existing pyl::Module definition
+		template <typename tag>
+		static ModuleDef * Create( const ModuleDef const * pParentMod, const std::string moduleName, const std::string moduleDocs = "" )
+		{
+			if ( ModuleDef * pExistingDef = GetModuleDef( moduleName ) )
+				return pExistingDef;
 
-		\param[in] moduleName The name of the module you'd like to retreive
-		\param[out] pModule A pointer to the module you've requested, returns nullptr if not found	
+			// Add to map
+			ModuleDef& mod = s_mapPyModules[moduleName] = pParentMod ? ModuleDef( pParentMod, moduleName, moduleDocs ) : ModuleDef( moduleName, moduleDocs );
 
-		Use this function to get a pointer to a previously created module definition. If you plan on 
-		modifying the definition you must do it prior to initializing the interpreter
-		*/
-		static ModuleDef * GetModuleDef( const std::string moduleName );
+			// Create an initialize m_fnModInit
+			mod.createFnObject();
+
+			// Add this module to the list of builtin modules, and ensure m_fnModInit gets called on import
+			int success = PyImport_AppendInittab( mod.getNameBuf(), get_fn_ptr<tag>( mod.m_fnModInit ) );
+
+			return &mod;
+		}
 		
 		/*! AsObject
 		\brief Get the Python module as a pyl::Object
@@ -434,6 +456,6 @@ namespace pyl
 #define AddFnToMod(F, R, M, ...)\
 	M->RegisterFunction<struct __st_fn##F>(#F, pyl::make_function(F));
 
-#define AddMemFnToMod(C, F, R, M, ...)\
+#define AddMemFnToMod(M, C, F, R, ...)\
 	std::function<R(C *, ##__VA_ARGS__)> fn##F = &C::F;\
 	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, fn##F);

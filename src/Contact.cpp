@@ -7,6 +7,7 @@
 #include <glm/vec4.hpp>
 
 Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec2 posB, const vec2 nrm, const float d ) :
+	m_bIsColliding( false ),
 	m_pCollidingPair{ pA, pB },
 	m_v2Pos{ posA, posB },
 	m_v2Normal( nrm ),
@@ -97,6 +98,26 @@ float Contact::GetCurImpulse() const
 	return m_fCurImpulse;
 }
 
+const RigidBody2D * Contact::GetBodyA() const
+{
+	return m_pA;
+}
+
+const RigidBody2D * Contact::GetBodyB() const
+{
+	return m_pB;
+}
+
+bool Contact::IsColliding() const
+{
+	return m_bIsColliding;
+}
+
+void Contact::setIsColliding( bool bColliding )
+{
+	m_bIsColliding = bColliding;
+}
+
 // Contact Solver
 Contact::Solver::Solver():
 	m_nIterations(0)
@@ -134,7 +155,10 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 			// Detect collision
 			bool colliding = (remove < -kEPS);
 			if ( colliding )
+			{
 				uColCount++;
+				c.setIsColliding( true );
+			}
 
 			// Get the magnitude of the collision (negative or zero)
 			float impulseMag = colliding ? (fCr_1 * relNv * c.GetInertialDenom()) : 0.f;

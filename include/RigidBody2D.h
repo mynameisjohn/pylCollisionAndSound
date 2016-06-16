@@ -2,12 +2,13 @@
 
 #include "Contact.h"
 #include "quatvec.h"
+#include "EntComponent.h"
 
 #include <glm/mat2x2.hpp>
 #include <glm/vec2.hpp>
 
 // Let's see if I can make this a POD union
-struct RigidBody2D
+struct RigidBody2D : public EntComponent
 {
 	// All rigid bodies are the same type,
 	// but this enum dictates what they really are

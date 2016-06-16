@@ -2,6 +2,9 @@
 #include "Clip.h"
 #include "Voice.h"
 
+#include <SDL.h>
+#include <SDL_audio.h>
+
 #include <iostream>
 #include <algorithm>
 
@@ -17,10 +20,12 @@ SoundManager::SoundManager() :
 // the audio, in which case we should tear it down
 SoundManager::~SoundManager()
 {
-	if ( this == m_AudioSpec.userdata )
+	if ( m_pAudioSpec )
 	{
-		SDL_CloseAudio();
-		memset( &m_AudioSpec, 0, sizeof( SDL_AudioSpec ) );
+		if ( this == m_pAudioSpec->userdata )
+		{
+			SDL_CloseAudio();
+		}
 	}
 }
 
@@ -48,7 +53,7 @@ bool SoundManager::RegisterClip( std::string strClipName, std::string strHeadFil
 	Uint32 uNumBytesInTail( 0 );
 
 	// The spec of the audio, checked against ours
-	SDL_AudioSpec wavSpec{ 0 }, refSpec = m_AudioSpec;
+	SDL_AudioSpec wavSpec{ 0 }, refSpec = *m_pAudioSpec;
 	auto checkAudioSpec = [refSpec, &wavSpec] ()
 	{
 		return (refSpec.freq == wavSpec.freq &&
@@ -215,27 +220,28 @@ bool SoundManager::Init( std::map<std::string, int> mapAudCfg )
 {
 	try
 	{
-		m_AudioSpec.freq = mapAudCfg.at( "freq" );
-		m_AudioSpec.channels = mapAudCfg.at( "channels" );
-		m_AudioSpec.samples = mapAudCfg.at( "bufSize" );
+		m_pAudioSpec = std::unique_ptr<SDL_AudioSpec>( new SDL_AudioSpec );
+		m_pAudioSpec->freq = mapAudCfg.at( "freq" );
+		m_pAudioSpec->channels = mapAudCfg.at( "channels" );
+		m_pAudioSpec->samples = mapAudCfg.at( "bufSize" );
 
 	}
 	catch ( std::out_of_range )
 	{
-		memset( &m_AudioSpec, 0, sizeof( SDL_AudioSpec ) );
+		m_pAudioSpec.reset();
 		return false;
 	}
 
-	m_AudioSpec.format = AUDIO_F32;
-	m_AudioSpec.callback = (SDL_AudioCallback) SoundManager::FillAudio;
-	m_AudioSpec.userdata = this;
+	m_pAudioSpec->format = AUDIO_F32;
+	m_pAudioSpec->callback = (SDL_AudioCallback) SoundManager::FillAudio;
+	m_pAudioSpec->userdata = this;
 
 	SDL_AudioSpec received;
-	if ( SDL_OpenAudio( &m_AudioSpec, &received ) )
+	if ( SDL_OpenAudio( m_pAudioSpec.get(), &received ) )
 	{
 		std::cout << "Error initializing SDL Audio" << std::endl;
 		std::cout << SDL_GetError() << std::endl;
-		memset( &m_AudioSpec, 0, sizeof( SDL_AudioSpec ) );
+		m_pAudioSpec.reset();
 		return false;
 	}
 
@@ -249,7 +255,7 @@ bool SoundManager::Init( std::map<std::string, int> mapAudCfg )
 bool SoundManager::PlayPause()
 {
 	// This gets set if configure is successful
-	if ( m_AudioSpec.userdata == nullptr )
+	if ( m_pAudioSpec->userdata == nullptr )
 		return false;
 
 	// Toggle audio playback (and bool)
@@ -265,12 +271,12 @@ bool SoundManager::PlayPause()
 
 size_t SoundManager::GetSampleRate() const
 {
-	return m_AudioSpec.freq;
+	return m_pAudioSpec ? m_pAudioSpec->freq : 0;
 }
 
 size_t SoundManager::GetBufferSize() const
 {
-	return m_AudioSpec.samples;
+	return m_pAudioSpec ? m_pAudioSpec->samples : 0;
 }
 
 size_t SoundManager::GetMaxSampleCount() const
@@ -293,11 +299,11 @@ size_t SoundManager::GetNumSamplesInClip( std::string strClipName, bool bTail /*
 
 SDL_AudioSpec const * SoundManager::GetAudioSpecPtr() const
 {
-	return &m_AudioSpec;
+	return m_pAudioSpec.get();
 }
 
 // Called via the static fill_audi function
-void SoundManager::fill_audio_impl( Uint8 * pStream, int nBytesToFill )
+void SoundManager::fill_audio_impl( uint8_t * pStream, int nBytesToFill )
 {
 	// Don't do nothin if they gave us nothin
 	if ( pStream == nullptr || nBytesToFill == 0 )
@@ -332,8 +338,39 @@ void SoundManager::fill_audio_impl( Uint8 * pStream, int nBytesToFill )
 
 // Static SDL audio callback function (each instance sets its own userdata to this, so I guess
 // multiple instances are legit)
-/*static*/ void SoundManager::FillAudio( void * pUserData, Uint8 * pStream, int nSamplesDesired )
+/*static*/ void SoundManager::FillAudio( void * pUserData, uint8_t * pStream, int nSamplesDesired )
 {
 	// livin on a prayer
 	((SoundManager *) pUserData)->fill_audio_impl( pStream, nSamplesDesired );
+}
+
+bool SoundManager::HandleCommand( Command cmd )
+{
+	if ( cmd.eID == ECommandID::None )
+		return false;
+
+	std::lock_guard<std::mutex> lg( m_muAudioMutex );
+	m_liPublicCmdQueue.push_back( cmd );
+
+	return true;
+}
+
+// Adds several message-wrapped tasks to the queue (locks mutex once)
+bool SoundManager::HandleCommands( std::list<Command> liCommands )
+{
+	if ( liCommands.empty() )
+		return false;
+
+	std::lock_guard<std::mutex> lg( m_muAudioMutex );
+	m_liPublicCmdQueue.splice( m_liPublicCmdQueue.end(), liCommands );
+
+	return true;
+}
+
+Clip * SoundManager::GetClip( std::string strClipName ) const
+{
+	auto itClip = m_mapClips.find( strClipName );
+	if ( itClip != m_mapClips.end() )
+		return (Clip *) &itClip->second;
+	return nullptr;
 }

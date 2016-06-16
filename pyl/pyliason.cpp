@@ -224,9 +224,18 @@ namespace pyl
 	// It's unforunate that this takes so long
 	bool convert(PyObject *obj, float &val) {
 		double d(0);
-		bool ret = generic_convert<double>(obj, is_py_float, PyFloat_AsDouble, d);
-		val = float(d);
-		return ret;
+		if ( convert( obj, d ) )
+		{
+			val = (float) d;
+			return true;
+		}
+		int i( 0 );
+		if ( convert( obj, i ) )
+		{
+			val = (float) i;
+			return true;
+		}
+		return false;
 	}
 	
 	// If the client knows what to do, let 'em deal with it
@@ -389,6 +398,16 @@ namespace pyl
 		m_strModName( moduleName ),
 		m_fnCustomInit( [] ( Object o ) {} )
 	{
+	}
+
+	// ParentMod Constructor
+	ModuleDef::ModuleDef( const ModuleDef const * pParentMod, const std::string& moduleName, const std::string& moduleDocs ) :
+		// Let's hope the default copy constructor is sufficient
+		ModuleDef(*pParentMod)
+	{
+		m_strModName = moduleName;
+		m_strModDocs = moduleDocs;
+		m_fnCustomInit = [] ( Object o ) {};
 	}
 
 	// This is implemented here just to avoid putting these STL calls in the header

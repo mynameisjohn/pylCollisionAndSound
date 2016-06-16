@@ -28,6 +28,9 @@ bool Shader::Init( std::string strVertSrc, std::string strFragSrc, bool fromDisk
 	if ( strVertSrc.empty() || strFragSrc.empty() )
 		return false;
 
+	m_VertShaderSrc = strVertSrc;
+	m_FragShaderSrc = strFragSrc;
+
 	// Check if the shader op went ok
 	auto check = [] ( GLuint id, GLuint type )
 	{
@@ -82,20 +85,24 @@ bool Shader::Init( std::string strVertSrc, std::string strFragSrc, bool fromDisk
 	GLint nUniforms( 0 ), nAttributes( 0 );
 	const GLsizei uMaxNumChars = 256;
 	GLchar szNameBuf[uMaxNumChars]{ 0 };
+	GLsizei uLen( 0 );
+	GLint iSize( 0 );
+	GLenum eType( 0 );
 
 	glGetProgramiv( m_Program, GL_ACTIVE_UNIFORMS, &nUniforms );
 	glGetProgramiv( m_Program, GL_ACTIVE_ATTRIBUTES, &nAttributes );
 
 	for ( int i = 0; i < nUniforms; i++ )
 	{
-
-		glGetActiveUniform( m_Program, i, strlen( szNameBuf ), nullptr, nullptr, nullptr, szNameBuf );
+		memset( szNameBuf, 0, sizeof( szNameBuf ) );
+		glGetActiveUniform( m_Program, i, uMaxNumChars, &uLen, &iSize, &eType, szNameBuf );
 		m_mapHandles[szNameBuf] = i;
 	}
 
-	for ( int i = 0; i < nUniforms; i++ )
+	for ( int i = 0; i < nAttributes; i++ )
 	{
-		glGetActiveAttrib( m_Program, i, strlen( szNameBuf ), nullptr, nullptr, nullptr, szNameBuf );
+		memset( szNameBuf, 0, sizeof( szNameBuf ) );
+		glGetActiveAttrib( m_Program, i, uMaxNumChars, &uLen, &iSize, &eType, szNameBuf );
 		m_mapHandles[szNameBuf] = i;
 	}
 

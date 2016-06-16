@@ -28,18 +28,16 @@ public:
 	const Shader * GetShaderPtr() const;
 	const Camera * GetCameraPtr() const;
 	const SoundManager * GetSoundManagerPtr() const;
-	const Drawable * GetDrawable( size_t drIdx ) const;
+	const Drawable * GetDrawable( const size_t drIdx ) const;
+	const RigidBody2D * GetRigidBody2D( const size_t rbIdx ) const;
 
-	bool InitDisplay( uint32_t glMajor, uint32_t glMinor, uint32_t iScreenW, uint32_t iScreenH, vec4 v4ClearColor );
+	bool InitDisplay( std::string strWindowName, uint32_t glMajor, uint32_t glMinor, uint32_t iScreenW, uint32_t iScreenH, vec4 v4ClearColor );
 	
 	int AddDrawable( std::string strIqmFile, vec2 T, vec2 S, vec4 C );
 	
 	int AddRigidBody( RigidBody2D::EType eType, glm::vec2 v2Vel, glm::vec2 v2Pos, float fMass, float fElasticity, std::map<std::string, float> mapDetails );
-	template<typename T>
-	int AddRigidBody( T kType, glm::vec2 v2Vel, glm::vec2 v2Pos, float fMass, float fElasticity, std::map<std::string, float> mapDetails )
-	{
-		return AddRigidBody( (int) kType, v2Vel, v2Pos, fMass, fElasticity, mapDetails );
-	}
+
+	std::list<const Contact *> GetContacts() const;
 
 private:
 	bool m_bQuitFlag;

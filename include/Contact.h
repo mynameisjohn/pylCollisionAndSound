@@ -36,6 +36,10 @@ public:
 	float GetInertialDenom() const;
 	float GetCurImpulse() const;
 
+	const RigidBody2D * GetBodyA() const;
+	const RigidBody2D * GetBodyB() const;
+
+
 	// The Solver class, which really only does one thing...
 	class Solver
 	{
@@ -49,6 +53,11 @@ public:
 
 	// Init a drawable, for debugging purposes
 	void InitDrawable( std::array<Drawable *, 2> drPtrArr ) const;
+
+	bool IsColliding() const;
+	class Solver;
+protected:
+	void setIsColliding( bool bCollidng );
 
 private:
 	// Some convenient unions
@@ -68,6 +77,7 @@ private:
 		struct { glm::vec2 m_v2RadA; glm::vec2 m_v2RadB; };
 	};
 
+	bool m_bIsColliding;
 	float m_fDist;			// The distance between the contact pair
 	float m_fInvMassI;		// 1 / the impulse mass
 	float m_fCurImpulse;	// The accumulated impulse value
