@@ -154,7 +154,7 @@ bool ExposeSoundManager()
 	AddMemFnToMod( pModDef, SoundManager, GetNumBufsCompleted, size_t );
 	AddMemFnToMod( pModDef, SoundManager, GetNumSamplesInClip, size_t, std::string, bool );
 	AddMemFnToMod( pModDef, SoundManager, Init, bool, std::map<std::string, int> );
-	AddMemFnToMod( pModDef, SoundManager, PlayPause, bool );
+	AddMemFnToMod( pModDef, SoundManager, PlayPause, bool, bool );
 
 	// These are static functions, so we don't need the macro (doesn't mean there shouldn't be one...)
 	pModDef->RegisterFunction<struct st_fnSmSendMessage>( "SendMessage", make_function( SendMessage ) );
@@ -228,6 +228,7 @@ bool ExposeDrawable()
 	pModDef->RegisterClass<Drawable, EntComponent>( "Drawable", pEntMod );
 
 	AddMemFnToMod( pModDef, Drawable, SetTransform, void, quatvec );
+	AddMemFnToMod( pModDef, Drawable, SetColor, void, glm::vec4 );
 
 	// These are static functions, so we don't need the macro (doesn't mean there shouldn't be one...)
 	pModDef->RegisterFunction<struct st_fnDrSetPosH>( "SetPosHandle", make_function( Drawable::SetPosHandle ) );
@@ -271,6 +272,7 @@ bool ExposeContact()
 
 	AddMemFnToMod( pModDef, Contact, GetBodyA, const RigidBody2D * );
 	AddMemFnToMod( pModDef, Contact, GetBodyB, const RigidBody2D * );
+	AddMemFnToMod( pModDef, Contact, IsColliding, bool );
 
 	return true;
 }

@@ -5,16 +5,24 @@ from pylEntComponent import EntComponent
 class Entity:
     nEntsCreated = 0
     def __init__(self, cScene, colIdx, drIdx, cSound):
+        self.cScene = cScene
         self.colIdx = colIdx
         self.drIdx = drIdx
-        self.c_Sound = cSound
+        self.soundComp = cSound
         self.liCollisions = []
 
-        Drawable(cScene.GetDrawable(self.drIdx)).SetID(Entity.nEntsCreated)
-        RigidBody2D(cScene.GetRigidBody2D(self.colIdx)).SetID(Entity.nEntsCreated)
+        self.GetDrawableComponent().SetID(Entity.nEntsCreated)
+        self.GetCollisionComponent().SetID(Entity.nEntsCreated)
+        self.soundComp.SetDrawableIdx(self.drIdx)
 
         Entity.nEntsCreated += 1
+
+    def GetDrawableComponent(self):
+        return Drawable(self.cScene.GetDrawable(self.drIdx))
         
+    def GetCollisionComponent(self):
+        return RigidBody2D(self.cScene.GetRigidBody2D(self.colIdx))
+
     def Update(self):
         # If colliding, update collision count
         for c in self.liCollisions:
@@ -24,9 +32,10 @@ class Entity:
             # may be a better choice
             cSound.HandleCollision(c)
         # Update drawable transform
-        self.c_Dr.SetTransform(self.c_Col.GetTransform())
+        self.GetDrawableComponent().SetTransform(self.GetCollisionComponent())
         # Clear collision list
         self.liCollisions.clear()
 
     def HandleCollision(self, eOther):
+        print(self, 'is colliding with', eOther)
         self.liCollisions.append(self.eOther)     

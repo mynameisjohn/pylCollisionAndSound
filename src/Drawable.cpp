@@ -92,6 +92,11 @@ bool Drawable::Init( std::string strIqmSrcFile, glm::vec4 v4Color, quatvec qvTra
 		}
 	}
 
+	// Store the transform and color values
+	m_qvTransform = qvTransform;
+	m_v2Scale = v2Scale;
+	m_v4Color = v4Color;
+
 	// Store the values from the static cache, return true
 	m_VAO = s_VAOCache[strIqmSrcFile][0];
 	m_nIdx = s_VAOCache[strIqmSrcFile][1];

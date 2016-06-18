@@ -188,6 +188,7 @@ class LoopManager:
         self.curSamplePos = 0
         self.curSamplePosInc = 0
         self.totalLoopCount = 0
+        self.uNumBufsCompleted = 0
 
         # the preTrigger is the number of samples before
         # the expected loop duration at which we send a state
@@ -198,8 +199,8 @@ class LoopManager:
         self.nextState = self.SG.AdvanceState()
 
     # Toggles the play/pause state of the c loop manager
-    def PlayPause(self):
-        self.cSM.PlayPause()
+    def PlayPause(self, bPlayPause):
+        self.cSM.PlayPause(bPlayPause)
 
     # returns an instance to the actual state graph
     def GetStateGraph(self):
@@ -218,13 +219,12 @@ class LoopManager:
     def Update(self):
         # Determine how many buffers have advanced, calculate increment
         # (this involves update the C++ Loop Manager, which locks a mutex)
-        uPrevNumBufs = self.cSM.GetNumBufsCompleted()
-        self.cSM.Update()
-        uPostNumBufs = self.cSM.GetNumBufsCompleted()
-        if uPostNumBufs > uPrevNumBufs:
-            uNumBufs = uPostNumBufs - uPrevNumBufs
+        uCurNumBufs = self.cSM.GetNumBufsCompleted()
+        if uCurNumBufs > self.uNumBufsCompleted:
+            uNumBufs = uCurNumBufs - self.uNumBufsCompleted
             self.curSamplePosInc += self.cSM.GetBufferSize() * uNumBufs
-        
+            self.uNumBufsCompleted = uCurNumBufs
+
         # Compute the new sample pos, zero inc, don't update yet
         newSamplePos = self.curSamplePos + self.curSamplePosInc
         self.curSamplePosInc = 0
@@ -283,8 +283,6 @@ class LoopManager:
         curSet = set(curState.GetActiveLoopGen())
         setToTurnOn = curSet - prevSet
         setToTurnOff = prevSet - curSet
-#        print('on', setToTurnOn)
-#        print('off', setToTurnOff)
 
         # Send a message list to the LM        
         messageList = []
@@ -294,7 +292,7 @@ class LoopManager:
             messageList.append((pylSoundManager.CMDStartLoop, (turnOn.name, turnOn.voiceID, turnOn.vol, curState.triggerRes)))
 
         if len(messageList) > 0:
-            self.cSM.SendMessages(messageList)
+            pylSoundManager.SendMessages(self.cSM.c_ptr, messageList)
 
 # Testing
 if __name__ == '__main__':

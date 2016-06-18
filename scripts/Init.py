@@ -22,10 +22,6 @@ from InputManager import *
 import Engine
 import Entity
 
-#import ptvsd
-#ptvsd.enable_attach(secret = None)
-#ptvsd.wait_for_attach()
-
 def InitEntities(cScene, loopManager):
     # Iterate loopmanager states
     # Create entities for each state
@@ -37,14 +33,22 @@ def InitEntities(cScene, loopManager):
     liEntities = []
 
     # Add one entity for each state, as an OBB and a state as its sound component
-    for s in loopManager.GetStateGraph().G.nodes_iter():
+    nodes = loopManager.GetStateGraph().G.nodes()
+    dTH = 2 * math.pi / len(nodes)
+    for i in range(len(nodes)):
+        s = nodes[i]
+        th = i * dTH - math.pi/2
+        pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
+        clr = DrawableLoopState.clrOff
+        if s is loopManager.GetStateGraph().activeState:
+            clr = DrawableLoopState.clrPlaying
         liEntities.append(Entity.Entity( cScene,
-            cScene.AddRigidBody(pylRigidBody2D.rbtAABB, [0.,0.], [0.,0.], 1., 1., {'x' : -.5,
+            cScene.AddRigidBody(pylRigidBody2D.rbtAABB, [0.,0.], pos, 1., 1., {'x' : -.5,
                                                                   'y' : -.5,
                                                                   'w' : 1.,
                                                                   'h' : 1.,
-                                                                  'th' : 0.}),
-            cScene.AddDrawable('../models/quad.iqm', [0., 0.], [1., 1.], [1., 0., 1., 1.]),
+                                                                  'th' : 0.}),         
+            cScene.AddDrawable('../models/quad.iqm', pos, [1., 1.], clr),
             s))
 
     # Add nCircles entities, giving each a voice as its sound component
@@ -186,7 +190,7 @@ def InitLoopManager(cScene):
         nonlocal cSM
         nonlocal arpClip
         t = (arpClip.name, arpClip.voiceID, arpClip.vol, int(cSM.GetMaxSampleCount() / 4))
-        cSM.SendMessage((pylSoundManager.CMDOneShot, t))
+        pylSoundManager.SendMessage(cSM.c_ptr, (pylSoundManager.CMDOneShot, t))
     liButtons.append(Button(SDLK.SDLK_f, None, fnOneShotKey))
 
     # The escape key callback tells the scene to quit

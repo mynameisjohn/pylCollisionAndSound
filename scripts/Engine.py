@@ -7,21 +7,28 @@ class Engine:
         self.m_cScene = cScene
 
     def Update(self): 
-        liContacts = [pylContact.Contact(c) for c in self.m_cScene.GetContacts()]
-        liCollidingContacts = [(c.GetBodyA(), c.GetBodyB()) for c in liCollidingContacts if c.IsColliding()]
-        # Iterate over the colliding contacts 
-        for c in liCollidingContacts:
-            # Let entities know what happened
-            self.m_liEntities[c[0].GetID()].HandleCollision(c)
-            self.m_liEntities[c[1].GetID()].HandleCollision(c)
+        self.m_cScene.Update()
+
+        #liContacts = [pylContact.Contact(c) for c in self.m_cScene.GetContacts()]
+        #liCollidingContacts = [(c.GetBodyA(), c.GetBodyB()) for c in liContacts if c.IsColliding()]
+        ## Iterate over the colliding contacts 
+        #for c in liCollidingContacts:
+        #    # Let entities know what happened
+        #    self.m_liEntities[c[0].GetID()].HandleCollision(c)
+        #    self.m_liEntities[c[1].GetID()].HandleCollision(c)
                
         # Update every entity in the engine
-        for e in m_liEntities:
-            e.Update()
+        #for e in self.m_liEntities:
+        #    e.Update()
 
         # Update the sound manager
         self.m_SoundManager.Update()
 
-    # Starts SDL audio
-    def Start(self):
-        self.m_SoundManager.GetCSM().PlayPause()
+        self.m_cScene.Draw()
+
+    def StartStop(self, bStart):
+        self.m_SoundManager.PlayPause(bStart)
+
+    def HandleEvent(self, pSdlEvent):
+        # For now delegate to the sound manager handler
+        self.m_SoundManager.HandleEvent(pSdlEvent)
