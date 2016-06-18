@@ -1,19 +1,17 @@
-import pylRigidBody2D
-import pylDrawable
+from pylRigidBody2D import RigidBody2D
+from pylDrawable import Drawable
+from pylEntComponent import EntComponent
 
 class Entity:
     nEntsCreated = 0
-    def __init__(self, cScene, cCol, cDr, cSound):
-        self.c_Col = cCol
-        self.c_Dr = cDr
+    def __init__(self, cScene, colIdx, drIdx, cSound):
+        self.colIdx = colIdx
+        self.drIdx = drIdx
         self.c_Sound = cSound
         self.liCollisions = []
 
-        cRB = pylRigidBody2D.EntComponent(cScene.GetRigidBody2D(cCol))
-        cdrawable = pylDrawable.EntComponent(cScene.GetDrawable(cDr))
-
-        for eComp in [cRB, cdrawable]:
-            eComp.SetID(Entity.nEntsCreated)
+        Drawable(cScene.GetDrawable(self.drIdx)).SetID(Entity.nEntsCreated)
+        RigidBody2D(cScene.GetRigidBody2D(self.colIdx)).SetID(Entity.nEntsCreated)
 
         Entity.nEntsCreated += 1
         

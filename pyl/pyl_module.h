@@ -76,7 +76,8 @@ namespace pyl
 		int exposeObject_impl( const std::type_index T, voidptr_t instance, const std::string& name, PyObject * mod );
 
 		// Implementation of RegisterClass that doesn't need to be in this header file
-		bool registerClass_impl( const std::type_index T, const  std::string& className );
+		bool registerClass_impl( const std::type_index T, const  std::string& strClassName );
+		bool registerClass_impl( const std::type_index T, const std::type_index P, const std::string& strClassName, const ModuleDef * const pParentMod );
 
 		// Adds a method to the null terminated method def buf
 		bool addMethod_impl( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs );
@@ -338,6 +339,12 @@ namespace pyl
 		bool RegisterClass( std::string className )
 		{
 			return registerClass_impl( typeid(C), className );
+		}
+
+		template <class C, class P>
+		bool RegisterClass( std::string className, const ModuleDef const * pParentClassMod )
+		{
+			return registerClass_impl( typeid(C), typeid(P), className, pParentClassMod );
 		}
 
 

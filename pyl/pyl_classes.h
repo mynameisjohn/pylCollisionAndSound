@@ -118,14 +118,13 @@ namespace pyl
 
 		PyTypeObject * GetTypeObject() const;
 		const char * GetName() const;
+		void SetName( std::string strName );
 
 		_ExposedClassDef();
 		_ExposedClassDef( std::string strClassName );
-		_ExposedClassDef( const _ExposedClassDef& other );
-		_ExposedClassDef( const _ExposedClassDef&& other );
+		_ExposedClassDef( const _ExposedClassDef& other ) = default;
 
-		_ExposedClassDef& operator=( const _ExposedClassDef& other );
-		_ExposedClassDef& operator=( const _ExposedClassDef&& other );
+		_ExposedClassDef& operator=( const _ExposedClassDef& other ) = default;
 
 		static int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwargs );
 		static PyObject * PyClsCallFunc( PyObject * co, PyObject * args, PyObject * kwargs );

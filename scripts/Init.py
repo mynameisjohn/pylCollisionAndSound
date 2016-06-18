@@ -22,9 +22,9 @@ from InputManager import *
 import Engine
 import Entity
 
-import ptvsd
-ptvsd.enable_attach(secret = None)
-ptvsd.wait_for_attach()
+#import ptvsd
+#ptvsd.enable_attach(secret = None)
+#ptvsd.wait_for_attach()
 
 def InitEntities(cScene, loopManager):
     # Iterate loopmanager states

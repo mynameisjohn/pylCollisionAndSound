@@ -42,7 +42,7 @@ bool ExposeScene()
 	AddMemFnToMod( pModDef, Scene, GetRigidBody2D, const RigidBody2D *, size_t );
 	AddMemFnToMod( pModDef, Scene, GetContacts, std::list<const Contact *> );
 
-	AddMemFnToMod( pModDef, Scene, AddDrawable, bool, std::string, vec2, vec2, vec4 );
+	AddMemFnToMod( pModDef, Scene, AddDrawable, int, std::string, vec2, vec2, vec4 );
 	AddMemFnToMod( pModDef, Scene, AddRigidBody, int, RigidBody2D::EType, vec2, vec2, float, float, std::map<std::string, float> );
 
 	AddMemFnToMod( pModDef, Scene, GetQuitFlag, bool );
@@ -224,7 +224,8 @@ bool ExposeDrawable()
 	if ( pModDef == nullptr )
 		return false;
 
-	pModDef->RegisterClass<Drawable>( "Drawable" );
+	ModuleDef * pEntMod = ModuleDef::GetModuleDef( "pylEntComponent" );
+	pModDef->RegisterClass<Drawable, EntComponent>( "Drawable", pEntMod );
 
 	AddMemFnToMod( pModDef, Drawable, SetTransform, void, quatvec );
 
@@ -243,7 +244,8 @@ bool ExposeRigidBody2D()
 	if ( pModDef == nullptr )
 		return false;
 
-	pModDef->RegisterClass<RigidBody2D>( "RigidBody2D" );
+	ModuleDef * pEntMod = ModuleDef::GetModuleDef( "pylEntComponent" );
+	pModDef->RegisterClass<RigidBody2D, EntComponent>( "RigidBody2D", pEntMod );
 
 	AddMemFnToMod( pModDef, RigidBody2D, GetQuatVec, quatvec );
 

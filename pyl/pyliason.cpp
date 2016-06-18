@@ -296,39 +296,41 @@ namespace pyl
 		m_strClassName = strClassName;
 	}
 
-	_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef& other ) :
-		// I see no harm in invoking the default constructor
-		_ExposedClassDef( other.m_strClassName )
-	{
-		// But leave in an unprepared state
-		m_TypeObject.tp_name = nullptr;
-		m_TypeObject.tp_members = nullptr;
-		m_TypeObject.tp_methods = nullptr;
-	}
+	//_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef& other ) :
+	//	// I see no harm in invoking the default constructor
+	//	_ExposedClassDef( other.m_strClassName )
+	//{
+	//	m_set
 
-	_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef&& other ) :
-		// I see no harm in invoking the above
-		_ExposedClassDef( other.m_strClassName )
-	{
-		// But leave in an unprepared state
-		m_TypeObject.tp_name = nullptr;
-		m_TypeObject.tp_members = nullptr;
-		m_TypeObject.tp_methods = nullptr;
-	}
+	//	// But leave in an unprepared state
+	//	m_TypeObject.tp_name = nullptr;
+	//	m_TypeObject.tp_members = nullptr;
+	//	m_TypeObject.tp_methods = nullptr;
+	//}
 
-	// Same with equals operators
-	_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef& other )
-	{
-		// Is this legit?
-		*this = _ExposedClassDef( other );
-		return *this;
-	}
+	//_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef&& other ) :
+	//	// I see no harm in invoking the above
+	//	_ExposedClassDef( other.m_strClassName )
+	//{
+	//	// But leave in an unprepared state
+	//	m_TypeObject.tp_name = nullptr;
+	//	m_TypeObject.tp_members = nullptr;
+	//	m_TypeObject.tp_methods = nullptr;
+	//}
 
-	_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef&& other )
-	{
-		*this = _ExposedClassDef( other );
-		return *this;
-	}
+	//// Same with equals operators
+	//_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef& other )
+	//{
+	//	// Is this legit?
+	//	*this = _ExposedClassDef( other );
+	//	return *this;
+	//}
+
+	//_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef&& other )
+	//{
+	//	*this = _ExposedClassDef( other );
+	//	return *this;
+	//}
 
 	// This has to happen at a time when these
 	// definitions will no longer move
@@ -336,8 +338,6 @@ namespace pyl
 	{
 		AddMember( "c_ptr", T_OBJECT_EX, offsetof( _GenericPyClass, capsule ), 0, "pointer to the underlying c object" );
 
-		auto shit = m_ntMemberDefs.size();
-		auto poo = m_ntMethodDefs.size();
 		// Assing the pointers
 		m_TypeObject.tp_name = m_strClassName.c_str();
 		m_TypeObject.tp_members = (PyMemberDef *) m_ntMemberDefs.data();
@@ -397,6 +397,15 @@ namespace pyl
 	const char * _ExposedClassDef::GetName() const
 	{
 		return m_strClassName.c_str();
+	}
+
+	void _ExposedClassDef::SetName( std::string strName )
+	{
+		// We can't do this if we're been prepared
+		if ( IsPrepared() )
+			return;
+
+		m_strClassName = strName;
 	}
 
 	//// Add a method, preserving the null terminator and storing strings where they won't be destroyed
@@ -501,6 +510,22 @@ namespace pyl
 	bool ModuleDef::registerClass_impl( const std::type_index T, const std::string& className )
 	{
 		return m_mapExposedClasses.emplace( T, className ).second;
+	}
+
+	// This is implemented here just to avoid putting these STL calls in the header
+	bool ModuleDef::registerClass_impl( const std::type_index T, const std::type_index P, const std::string& strClassName, const ModuleDef * const pParentClassMod )
+	{
+		for ( auto& itClass : pParentClassMod->m_mapExposedClasses )
+		{
+			if ( itClass.first == P )
+			{
+				_ExposedClassDef clsDef = itClass.second;
+				clsDef.SetName( strClassName );
+				return m_mapExposedClasses.emplace( T, clsDef ).second;
+			}
+		}
+		
+		return m_mapExposedClasses.emplace( T, strClassName ).second;
 	}
 
 	// Implementation of expose object function that doesn't need to be in this header file
