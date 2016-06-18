@@ -25,12 +25,12 @@ class Entity:
 
     def Update(self):
         # If colliding, update collision count
-        for c in self.liCollisions:
+        #for c in self.liCollisions:
             # Update sound state collision count
             # In the future I might want to know what it's
             # colliding with, so iterating over contacts
             # may be a better choice
-            cSound.HandleCollision(c)
+            #cSound.HandleCollision(c)
         # Update drawable transform
         self.GetDrawableComponent().SetTransform(self.GetCollisionComponent().GetQuatVec())
         # Clear collision list
@@ -38,4 +38,4 @@ class Entity:
 
     def HandleCollision(self, eOther):
         print(self, 'is colliding with', eOther)
-        self.liCollisions.append(self.eOther)     
+        self.liCollisions.append(eOther)     

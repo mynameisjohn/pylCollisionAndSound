@@ -1,4 +1,5 @@
-import pylContact
+from pylContact import Contact
+from pylRigidBody2D import RigidBody2D
 
 class Engine:
     def __init__(self, liEntities, soundManager, cScene):
@@ -9,8 +10,8 @@ class Engine:
     def Update(self): 
         self.m_cScene.Update()
 
-        liContacts = [pylContact.Contact(c) for c in self.m_cScene.GetContacts()]
-        liCollidingContacts = [(c.GetBodyA(), c.GetBodyB()) for c in liContacts if c.IsColliding()]
+        liContacts = [Contact(c) for c in self.m_cScene.GetContacts()]
+        liCollidingContacts = [(RigidBody2D(c.GetBodyA()), RigidBody2D(c.GetBodyB())) for c in liContacts if c.IsColliding()]
         # Iterate over the colliding contacts 
         for c in liCollidingContacts:
             # Let entities know what happened

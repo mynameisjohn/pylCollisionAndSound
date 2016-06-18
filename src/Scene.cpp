@@ -8,7 +8,8 @@ Scene::Scene() :
 	m_bQuitFlag( false ),
 	m_bDrawContacts( false ),
 	m_GLContext( nullptr ),
-	m_pWindow( nullptr )
+	m_pWindow( nullptr ),
+	m_ContactSolver( 10 )
 {}
 
 Scene::~Scene()

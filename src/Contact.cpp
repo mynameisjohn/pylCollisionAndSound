@@ -5,6 +5,7 @@
 #include "Util.h"
 #include "Drawable.h"
 #include <glm/vec4.hpp>
+#include <iostream>
 
 Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec2 posB, const vec2 nrm, const float d ) :
 	m_bIsColliding( false ),
@@ -151,7 +152,7 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 
 			// Find out how much you'd remove to have them just touch
 			float remove = relNv + c.GetDistance() / g_fTimeStep;
-
+			
 			// Detect collision
 			bool colliding = (remove < -kEPS);
 			if ( colliding )
