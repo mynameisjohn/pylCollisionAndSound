@@ -35,20 +35,22 @@ def InitEntities(cScene, loopManager):
     # Add one entity for each state, as an OBB and a state as its sound component
     nodes = loopManager.GetStateGraph().G.nodes()
     dTH = 2 * math.pi / len(nodes)
-    for i in range(len(nodes)):
+    for i in range(2):
         s = nodes[i]
         th = i * dTH - math.pi/2
-        pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
-        vel = [-vi for vi in pos]
+        pos = [5, 0.] if i == 1 else [-5, 0]
+        #pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
+        vel = [-p for p in pos]
+        scale = [1., 1.]
         clr = DrawableLoopState.clrOff
-        if s is loopManager.GetStateGraph().activeState:
+        if i == 1:
             clr = DrawableLoopState.clrPlaying
         liEntities.append(Entity.Entity( cScene,
             cScene.AddRigidBody(pylRigidBody2D.rbtAABB, vel, pos, 1., 1., {
-                                                                  'w' : 1.,
-                                                                  'h' : 1.,
+                                                                  'w' : scale[0],
+                                                                  'h' : scale[1],
                                                                   'th' : 0.}),         
-            cScene.AddDrawable('../models/quad.iqm', pos, [1., 1.], clr),
+            cScene.AddDrawable('../models/quad.iqm', pos, scale, clr),
             s))
 
     # Add nCircles entities, giving each a voice as its sound component

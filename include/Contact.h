@@ -32,7 +32,7 @@ public:
 	float GetVelN_B() const;
 
 	float GetDistance() const;
-	float GetCoefRest() const;
+	float GetAvgCoefRest() const;
 	float GetInertialDenom() const;
 	float GetCurImpulse() const;
 
@@ -77,11 +77,11 @@ private:
 		struct { glm::vec2 m_v2RadA; glm::vec2 m_v2RadB; };
 	};
 
-	bool m_bIsColliding;
+	bool m_bIsColliding;	// Whether or not the contact is colliding
 	float m_fDist;			// The distance between the contact pair
 	float m_fInvMassI;		// 1 / the impulse mass
 	float m_fCurImpulse;	// The accumulated impulse value
-	glm::vec2 m_v2Normal;	// The collision normal
+	glm::vec2 m_v2Normal;	// The collision normal (out of A)
 
 	// internal contact vel function
 	glm::vec2 getContactVel( int i ) const;

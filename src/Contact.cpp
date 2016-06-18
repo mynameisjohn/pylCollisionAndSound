@@ -43,15 +43,19 @@ Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec
 
 void Contact::ApplyImpulse( float fMag )
 {
+	// Calculate the new impulse and apply the change
+	float newImpulse = fMag + m_fCurImpulse;
+	float delImpulse = newImpulse - m_fCurImpulse;
+
 	// Find the direction along our collision normal
-	vec2 v2Impulse = fMag * m_v2Normal;
+	vec2 v2Impulse = delImpulse * m_v2Normal;
 
 	// Apply to both objects in opposing directions
 	m_pA->v2Vel -= v2Impulse / m_pA->fMass;
 	m_pB->v2Vel += v2Impulse / m_pB->fMass;
 
 	// Add impulse to local var
-	m_fCurImpulse += fMag;
+	m_fCurImpulse = newImpulse;
 }
 
 vec2 Contact::getContactVel( int i ) const
@@ -84,9 +88,9 @@ float Contact::GetDistance() const
 	return m_fDist;
 }
 
-float Contact::GetCoefRest() const
+float Contact::GetAvgCoefRest() const
 {
-	return m_pA->fElast + m_pB->fElast;
+	return .5f * (m_pA->fElast + m_pB->fElast);
 }
 
 float Contact::GetInertialDenom() const
@@ -143,16 +147,20 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 		for ( Contact& c : liContacts )
 		{
 			// Coeffcicient of restitution, plus 1
-			const float fCr_1 = 1.f + c.GetCoefRest();
+			const float fCr_1 = 1.f + c.GetAvgCoefRest();
 
-			// Get the relative contact velocity - Vb - Va
-			float vA_N = c.GetVelN_A();
-			float vB_N = c.GetVelN_B();
-			float relNv = vB_N - vA_N;
+			// Get the relative velocity of each body along the contact normal
+			const float vA_N = c.GetVelN_A();
+			const float vB_N = c.GetVelN_B();
+
+			// Find the relative velocity of the system
+			const float relNv = vA_N - vB_N;
+			const float relVelNeeded = c.GetDistance() / g_fTimeStep;
 
 			// Find out how much you'd remove to have them just touch
-			float remove = relNv + c.GetDistance() / g_fTimeStep;
-			
+			// (why is this negated?)
+			const float remove = relVelNeeded - relNv;
+
 			// Detect collision
 			bool colliding = (remove < -kEPS);
 			if ( colliding )
@@ -163,12 +171,7 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 
 			// Get the magnitude of the collision (negative or zero)
 			float impulseMag = colliding ? (fCr_1 * relNv * c.GetInertialDenom()) : 0.f;
-
-			// Calculate the new impulse and apply the change
-			const float fCurImpulse = c.GetCurImpulse();
-			float n_Impulse = impulseMag + fCurImpulse;
-			float delImpulse = n_Impulse - fCurImpulse;
-			c.ApplyImpulse( delImpulse );
+			c.ApplyImpulse( impulseMag );
 		}
 
 		// Maybe break if no contacts are colliding
@@ -184,14 +187,14 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 
 void Contact::InitDrawable( std::array<Drawable *, 2> drPtrArr ) const
 {
-	for ( Drawable * pDr : drPtrArr )
+	const float drScale = 0.2f;
+	for ( int i = 0; i < 2; i++ )
 	{
-		if ( pDr )
+		if ( drPtrArr[i] )
 		{
-			for ( glm::vec2 pos : m_v2Pos )
-			{
-				// NYI
-			}
+			quatvec qv; 
+			qv.vec = vec3( m_v2Pos[i], 1.f );
+			drPtrArr[i]->Init( "../models/quad.iqm", vec4( 1 ), qv, vec2( drScale ) );
 		}
 	}
 }

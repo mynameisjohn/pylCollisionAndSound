@@ -49,13 +49,22 @@ void Scene::Draw()
 		dr.Draw();
 	}
 
-	if ( m_bDrawContacts )
+	//if ( m_bDrawContacts )
 	{
 		Drawable d1, d2;
-		std::array<Drawable, 2> arDrPair;
+		std::array<Drawable *, 2> pContactDr = { &d1, &d2 };
 		for ( Contact& c : m_liSpeculativeContacts )
 		{
 			// NYI
+			c.InitDrawable( pContactDr );
+			for ( Drawable * pDr : pContactDr )
+			{
+				mat4 PMV = P * pDr->GetMV();
+				vec4 c = pDr->GetColor();
+				glUniformMatrix4fv( pmvHandle, 1, GL_FALSE, glm::value_ptr( PMV ) );
+				glUniform4fv( clrHandle, 1, glm::value_ptr( c ) );
+				pDr->Draw();
+			}
 		}
 	}
 
@@ -103,7 +112,7 @@ int Scene::AddDrawable( std::string strIqmFile, vec2 T, vec2 S, vec4 C )
 	Drawable D;
 	try
 	{
-		D.Init( strIqmFile, C, quatvec( vec3( T, 0 ), fquat() ), S );
+		D.Init( strIqmFile, C, quatvec( vec3( T, 0 ), fquat(1, 0, 0, 0), quatvec::Type::TRT ), S );
 	}
 	catch ( std::runtime_error )
 	{
@@ -134,7 +143,7 @@ int Scene::AddRigidBody( RigidBody2D::EType eType, glm::vec2 v2Vel, glm::vec2 v2
 				float h = mapDetails.at( "h" );
 				if ( eType == RigidBody2D::EType::AABB )
 				{
-					rb = AABB::Create( v2Vel, v2Pos, fMass, fElasticity, glm::vec2( w, h ) );
+					rb = AABB::Create( v2Vel, v2Pos, fMass, fElasticity, glm::vec2( w, h ) / 2.f );
 				}
 				else
 				{
@@ -250,6 +259,7 @@ bool Scene::InitDisplay( std::string strWindowName, uint32_t glMajor, uint32_t g
 
 	//For debugging
 	glLineWidth( 8.f );
+	return true;
 }
 
 // This is a dumb function...

@@ -342,7 +342,7 @@ namespace pyl
 		}
 
 		template <class C, class P>
-		bool RegisterClass( std::string className, const ModuleDef const * pParentClassMod )
+		bool RegisterClass( std::string className, const ModuleDef * const pParentClassMod )
 		{
 			return registerClass_impl( typeid(C), typeid(P), className, pParentClassMod );
 		}

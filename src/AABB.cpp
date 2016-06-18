@@ -93,14 +93,18 @@ glm::vec2 AABB::GetFaceNormalFromPoint( const glm::vec2 p ) const
 
 std::list<Contact> GetSpecContacts( AABB * pA, AABB * pB )
 {
-	vec2 d = pA->v2Center - pB->v2Center;
-	vec2 n = glm::normalize( d );
+	// Find the distance from A's center to B's
+	vec2 d = pB->v2Center - pA->v2Center;
+
+	// Clamp that vector to the box bounds, negating for b
 	vec2 a_pos = pA->Clamp( d );
-	vec2 b_pos = pB->Clamp( d );
+	vec2 b_pos = pB->Clamp( -d );
+
+	// Find the distance between the two contact points
 	float dist = glm::length( a_pos - b_pos );
 
 	// Construct and return
-	return{ Contact( pA, pB, a_pos, b_pos, n, dist ) };
+	return{ Contact( pA, pB, a_pos, b_pos, glm::normalize( d ), dist ) };
 }
 
 ////////////////////////////////////////////////////////////////////////////

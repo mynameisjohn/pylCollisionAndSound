@@ -367,6 +367,7 @@ namespace pyl
 		const char * pName = paInsert.first->c_str();
 		const char * pDocs = docs.empty() ? nullptr : m_liMethodDocs.insert( m_liMethodDocs.end(), docs )->c_str();
 		m_ntMethodDefs.push_back( { pName, fnPtr, flags, pDocs } );
+		return true;
 	}
 
 	bool _ExposedClassDef::AddMember( std::string strMemberName, int type, int offset, int flags, std::string docs )
@@ -387,6 +388,7 @@ namespace pyl
 		char * pName = (char *)paInsert.first->c_str();
 		char * pDocs = (char *) (docs.empty() ? nullptr : m_liMemberDocs.insert( m_liMemberDocs.end(), docs )->c_str());
 		m_ntMemberDefs.push_back( { pName, type, offset, flags, pDocs } );
+		return true;
 	}
 
 	PyTypeObject * _ExposedClassDef::GetTypeObject() const
@@ -633,6 +635,7 @@ namespace pyl
 		const char * pName = paInsert.first->c_str();
 		const char * pDocs = docs.empty() ? nullptr : m_liMethodDocs.insert( m_liMethodDocs.end(), docs )->c_str();
 		m_ntMethodDefs.push_back( { pName, fnPtr, flags, pDocs } );
+		return true;
 	}
 
 	// This function locks down any exposed class definitions

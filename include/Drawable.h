@@ -31,6 +31,10 @@ public:
 	void SetTransform( quatvec qv );
 	void Transform( quatvec qv );
 
+	void SetScale( vec2 S );
+	void Scale( vec2 S );
+	void Scale ( float s );
+
 	void SetColor( glm::vec4 c );
 
 	bool Draw();

@@ -2,6 +2,7 @@
 #include "IqmFile.h"
 
 #include <string>
+#include <vector>
 
 // Static var declarations
 /*static*/ GLint Drawable::s_PosHandle;
@@ -71,6 +72,8 @@ bool Drawable::Init( std::string strIqmSrcFile, glm::vec4 v4Color, quatvec qvTra
 			// If successful, bind position attr and upload data
 			GLuint bufIdx( 0 );
 			auto pos = f.Positions();
+			std::vector<glm::vec3> vPos( pos.count() );
+			memcpy( vPos.data(), pos.ptr(),pos.count() * sizeof( vec3 ) );
 			makeVBO( vboBuf[bufIdx++], s_PosHandle, pos.ptr(), pos.numBytes(), pos.nativeSize() / sizeof( float ), GL_FLOAT );
 
 			// Same for indices
@@ -167,6 +170,21 @@ void Drawable::SetTransform( quatvec qv )
 void Drawable::Transform( quatvec qv )
 {
 	m_qvTransform *= qv;
+}
+
+void Drawable::Scale( vec2 s )
+{
+	m_v2Scale *= s;
+}
+
+void Drawable::Scale( float s )
+{
+	m_v2Scale *= s;
+}
+
+void Drawable::SetScale( vec2 s )
+{
+	m_v2Scale = s;
 }
 
 void Drawable::SetColor( vec4 c )
