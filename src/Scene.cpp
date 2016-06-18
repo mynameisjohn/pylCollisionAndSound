@@ -129,18 +129,16 @@ int Scene::AddRigidBody( RigidBody2D::EType eType, glm::vec2 v2Vel, glm::vec2 v2
 			case RigidBody2D::EType::OBB:
 			case RigidBody2D::EType::AABB:
 			{
-				float x = mapDetails.at( "x" );
-				float y = mapDetails.at( "y" );
 				float w = mapDetails.at( "w" );
 				float h = mapDetails.at( "h" );
 				if ( eType == RigidBody2D::EType::AABB )
 				{
-					rb = AABB::Create( v2Vel, fMass, fElasticity, x, y, w, h );
+					rb = AABB::Create( v2Vel, v2Pos, fMass, fElasticity, glm::vec2( w, h ) );
 				}
 				else
 				{
 					float th = mapDetails.at( "th" );
-					rb = OBB::Create( v2Vel, fMass, fElasticity, x, y, w, h, th );
+					rb = OBB::Create( v2Vel, v2Pos, fMass, fElasticity, glm::vec2( w, h ), th );
 				}
 				break;
 			}

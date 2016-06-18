@@ -356,8 +356,8 @@ namespace pyl
 			Py_ssize_t i( 0 );
 			for ( ; i < 3; i++ )
 				PyList_SetItem( pList, i, PyFloat_FromDouble( (double) qv.vec[i] ) );
-			for ( ; i < 7; i++ )
-				PyList_SetItem( pList, i, PyFloat_FromDouble( (double) qv.quat[i] ) );
+			for ( i = 0; i < 4; i++ )
+				PyList_SetItem( pList, i + 3, PyFloat_FromDouble( (double) qv.quat[i] ) );
 
 			return pList;
 		}

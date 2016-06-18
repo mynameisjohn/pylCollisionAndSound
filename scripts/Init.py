@@ -39,12 +39,12 @@ def InitEntities(cScene, loopManager):
         s = nodes[i]
         th = i * dTH - math.pi/2
         pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
+        vel = [-vi for vi in pos]
         clr = DrawableLoopState.clrOff
         if s is loopManager.GetStateGraph().activeState:
             clr = DrawableLoopState.clrPlaying
         liEntities.append(Entity.Entity( cScene,
-            cScene.AddRigidBody(pylRigidBody2D.rbtAABB, [0.,0.], pos, 1., 1., {'x' : -.5,
-                                                                  'y' : -.5,
+            cScene.AddRigidBody(pylRigidBody2D.rbtAABB, vel, pos, 1., 1., {
                                                                   'w' : 1.,
                                                                   'h' : 1.,
                                                                   'th' : 0.}),         

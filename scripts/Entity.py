@@ -32,7 +32,7 @@ class Entity:
             # may be a better choice
             cSound.HandleCollision(c)
         # Update drawable transform
-        self.GetDrawableComponent().SetTransform(self.GetCollisionComponent())
+        self.GetDrawableComponent().SetTransform(self.GetCollisionComponent().GetQuatVec())
         # Clear collision list
         self.liCollisions.clear()
 
