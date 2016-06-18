@@ -220,7 +220,7 @@ bool ExposeDrawable()
 {
 	const std::string strModuleName = "pylDrawable";
 
-	ModuleDef * pModDef = ModuleDef::Create<struct st_drMod>( ModuleDef::GetModuleDef( "pylEntComponent" ), strModuleName );
+	ModuleDef * pModDef = ModuleDef::Create<struct st_drMod>( strModuleName );
 	if ( pModDef == nullptr )
 		return false;
 
@@ -239,7 +239,7 @@ bool ExposeRigidBody2D()
 {
 	const std::string strModuleName = "pylRigidBody2D";
 
-	ModuleDef * pModDef = ModuleDef::Create<struct st_drMod>( ModuleDef::GetModuleDef( "pylEntComponent" ), strModuleName );
+	ModuleDef * pModDef = ModuleDef::Create<struct st_drMod>( strModuleName );
 	if ( pModDef == nullptr )
 		return false;
 

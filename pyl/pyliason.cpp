@@ -28,9 +28,6 @@
 
 namespace pyl 
 {
-	using std::runtime_error;
-	using std::string;
-
 	Object::Object() {
 
 	}
@@ -43,13 +40,13 @@ namespace pyl
 		return pyshared_ptr(obj, [](PyObject *obj) { Py_XDECREF(obj); });
 	}
 
-	Object Object::from_script(const string &script_path) {
+	Object Object::from_script(const std::string &script_path) {
 		// Get the directory path and file name
-		string base_path("."), file_path;
+		std::string base_path("."), file_path;
 		size_t last_slash(script_path.rfind("/"));
-		if (last_slash != string::npos) {
+		if (last_slash != std::string::npos) {
 			if (last_slash >= script_path.size() - 2)
-				throw runtime_error("Invalid script path");
+				throw pyl::runtime_error("Invalid script path");
 			base_path = script_path.substr(0, last_slash);
 			file_path = script_path.substr(last_slash + 1);
 		}
@@ -79,13 +76,13 @@ namespace pyl
 
 		// If it was in the path and we still couldn't load, there's a problem
 		print_error();
-		throw runtime_error("Failed to load script");
+		return nullptr;
 	}
 
 	PyObject *Object::load_function(const std::string &name) {
 		PyObject *obj(PyObject_GetAttrString(py_obj.get(), name.c_str()));
 		if (!obj)
-			throw std::runtime_error("Failed to find function");
+			throw pyl::runtime_error("Failed to find function");
 		return obj;
 	}
 
@@ -93,7 +90,7 @@ namespace pyl
 		pyunique_ptr func(load_function(name));
 		PyObject *ret(PyObject_CallObject(func.get(), 0));
 		if (!ret)
-			throw std::runtime_error("Failed to call function");
+			throw pyl::runtime_error("Failed to call function");
 		return{ ret };
 	}
 
@@ -109,7 +106,7 @@ namespace pyl
 			get_attr(name);
 			return true;
 		}
-		catch (std::runtime_error&) {
+		catch ( pyl::runtime_error& ) {
 			return false;
 		}
 	}
@@ -250,10 +247,10 @@ namespace pyl
 	}
 
 	// We only need one instance of the above, shared by exposed objects
-	static int PyClsInit (PyObject * self, PyObject * args, PyObject * kwds) 
+	/*static*/ int _ExposedClassDef::PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
 	{
 		// In the example the first arg isn't a PyObject *, but... idk man
-		GenericPyClass * realPtr = static_cast<GenericPyClass *>((void *)self);
+		_GenericPyClass * realPtr = static_cast<_GenericPyClass *>((void *)self);
 		// The first argument is the capsule object
 		PyObject * c = PyTuple_GetItem(args, 0);
 		
@@ -272,96 +269,196 @@ namespace pyl
 	};
 	
 	// The () operator just returns the capsule object
-	static PyObject * PyClsCall(PyObject * co, PyObject * args, PyObject * kw)
+	/*static*/ PyObject * _ExposedClassDef::PyClsCallFunc( PyObject * co, PyObject * args, PyObject * kw )
 	{
-		auto realPtr = static_cast<GenericPyClass *>((voidptr_t)co);
-		Py_INCREF(realPtr->capsule);
-		return realPtr->capsule;
+		_GenericPyClass * pClass = static_cast<_GenericPyClass *>((voidptr_t)co);
+		Py_INCREF( pClass->capsule );
+		return pClass->capsule;
 	}
 
-	// Constructor for exposed classes, sets up type object
-	ExposedClass::ExposedClass(std::string n) : PyClassName(n)
+	_ExposedClassDef::_ExposedClassDef()
 	{
 		// Take care of this now
-        memset(&m_TypeObject, 0, sizeof(PyTypeObject));
-		m_TypeObject.ob_base = PyVarObject_HEAD_INIT(NULL, 0)
-		m_TypeObject.tp_name = PyClassName.c_str();
-		m_TypeObject.tp_init = (initproc)PyClsInit;
-		m_TypeObject.tp_call = (ternaryfunc)PyClsCall;
+		memset( &m_TypeObject, 0, sizeof( PyTypeObject ) );
+		m_TypeObject.ob_base = PyVarObject_HEAD_INIT( NULL, 0 )
+		m_TypeObject.tp_init = (initproc) _ExposedClassDef::PyClsInitFunc;
+		m_TypeObject.tp_call = (ternaryfunc) _ExposedClassDef::PyClsCallFunc;
 		m_TypeObject.tp_new = PyType_GenericNew;
 		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-		m_TypeObject.tp_basicsize = sizeof(GenericPyClass);
+		m_TypeObject.tp_basicsize = sizeof( _GenericPyClass );
+	}
+
+
+	// Constructor for exposed classes, sets up type object
+	_ExposedClassDef::_ExposedClassDef( std::string strClassName ) :
+		_ExposedClassDef()
+	{
+		m_strClassName = strClassName;
+	}
+
+	_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef& other ) :
+		// I see no harm in invoking the default constructor
+		_ExposedClassDef( other.m_strClassName )
+	{
+		// But leave in an unprepared state
+		m_TypeObject.tp_name = nullptr;
+		m_TypeObject.tp_members = nullptr;
+		m_TypeObject.tp_methods = nullptr;
+	}
+
+	_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef&& other ) :
+		// I see no harm in invoking the above
+		_ExposedClassDef( other.m_strClassName )
+	{
+		// But leave in an unprepared state
+		m_TypeObject.tp_name = nullptr;
+		m_TypeObject.tp_members = nullptr;
+		m_TypeObject.tp_methods = nullptr;
+	}
+
+	// Same with equals operators
+	_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef& other )
+	{
+		// Is this legit?
+		*this = _ExposedClassDef( other );
+		return *this;
+	}
+
+	_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef&& other )
+	{
+		*this = _ExposedClassDef( other );
+		return *this;
 	}
 
 	// This has to happen at a time when these
 	// definitions will no longer move
-	void ExposedClass::Prepare()
+	void _ExposedClassDef::Prepare()
 	{
-		m_TypeObject.tp_members = m_MemberDef.Ptr();
-		m_TypeObject.tp_methods = m_MethodDef.Ptr();
+		AddMember( "c_ptr", T_OBJECT_EX, offsetof( _GenericPyClass, capsule ), 0, "pointer to the underlying c object" );
+
+		auto shit = m_ntMemberDefs.size();
+		auto poo = m_ntMethodDefs.size();
+		// Assing the pointers
+		m_TypeObject.tp_name = m_strClassName.c_str();
+		m_TypeObject.tp_members = (PyMemberDef *) m_ntMemberDefs.data();
+		m_TypeObject.tp_methods = (PyMethodDef *) m_ntMethodDefs.data();
 	}
 
-	// Add a method, preserving the null terminator and storing strings where they won't be destroyed
-	void MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
+	bool _ExposedClassDef::IsPrepared() const
 	{
-		// If a method with this name has already been declared, throw an error
-		if (std::find(MethodNames.begin(), MethodNames.end(), name) != MethodNames.end())
+		return (bool) (m_TypeObject.tp_name && m_TypeObject.tp_members && m_TypeObject.tp_methods);
+	}
+
+	bool _ExposedClassDef::AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs )
+	{
+		if ( strMethodName.empty() )
 		{
-			// Alternatively, this could actually overwrite the pre-existing method. 
-			throw runtime_error("Error: Attempting to overwrite exisiting exposed python function");
+			throw std::runtime_error( "Error adding method " + strMethodName );
+			return false;
 		}
 
-		// We need the names in a list so their references stay valid
-		MethodNames.push_back(name);
-		const char * namePtr = MethodNames.back().c_str();
-
-		PyMethodDef method{ 0 };
-
-		if (docs.empty())
-			method = { namePtr, fnPtr, flags, NULL };
-		else {
-			MethodDocs.push_back(std::string(docs));
-			method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
-		}
-
-		_insert(method);
-	}
-
-	// These by default get the c_ptr capsule object
-	MemberDefinitions::MemberDefinitions()
-		: _NullTermBuf()
-	{
-		MemberNames.push_back("c_ptr");
-		MemberDocs.push_back("pointer to a c object");
-		PyMemberDef d = { (char *)MemberNames.back().c_str(), T_OBJECT_EX, offsetof(GenericPyClass, capsule), 0, (char *)MemberDocs.back().c_str() };
-		_insert(d);
-	}
-
-	// Add a member, preserving the null terminator and storing strings where they won't be destroyed
-	void MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
-	{
-		// If a member with this name has already been declared, throw an error
-		if (std::find(MemberNames.begin(), MemberNames.end(), name) != MemberNames.end())
+		auto paInsert = m_setUsedMethodNames.insert( strMethodName );
+		if ( paInsert.second == false )
 		{
-			// Alternatively, this could actually overwrite the pre-existing member. 
-			throw runtime_error("Error: Attempting to overwrite exisiting exposed python class member");
+			throw std::runtime_error( "Error: Attempting to overwrite exisiting exposed python function" );
+			return false;
 		}
 
-		// We need the names in a list so their references stay valid
-		MemberNames.push_back(name);
-		char * namePtr = (char *)MemberNames.back().c_str();
-
-		PyMemberDef member{ 0 };
-		
-		if (docs.empty())
-			member = { namePtr, type, offset, flags, NULL };
-		else {
-			MemberDocs.push_back(std::string(docs));
-			member = { namePtr, type, offset, flags, (char *)MemberDocs.back().c_str() };
-		}
-
-		_insert(member);
+		const char * pName = paInsert.first->c_str();
+		const char * pDocs = docs.empty() ? nullptr : m_liMethodDocs.insert( m_liMethodDocs.end(), docs )->c_str();
+		m_ntMethodDefs.push_back( { pName, fnPtr, flags, pDocs } );
 	}
+
+	bool _ExposedClassDef::AddMember( std::string strMemberName, int type, int offset, int flags, std::string docs )
+	{
+		if ( strMemberName.empty() )
+		{
+			throw std::runtime_error( "Error adding member " + strMemberName );
+			return false;
+		}
+
+		auto paInsert = m_setUsedMemberNames.insert( strMemberName );
+		if ( paInsert.second == false )
+		{
+			throw std::runtime_error( "Error: Attempting to overwrite exisiting exposed python function" );
+			return false;
+		}
+
+		char * pName = (char *)paInsert.first->c_str();
+		char * pDocs = (char *) (docs.empty() ? nullptr : m_liMemberDocs.insert( m_liMemberDocs.end(), docs )->c_str());
+		m_ntMemberDefs.push_back( { pName, type, offset, flags, pDocs } );
+	}
+
+	PyTypeObject * _ExposedClassDef::GetTypeObject() const
+	{
+		return (PyTypeObject *) &m_TypeObject;
+	}
+
+	const char * _ExposedClassDef::GetName() const
+	{
+		return m_strClassName.c_str();
+	}
+
+	//// Add a method, preserving the null terminator and storing strings where they won't be destroyed
+	//void MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
+	//{
+	//	// If a method with this name has already been declared, throw an error
+	//	if (std::find(MethodNames.begin(), MethodNames.end(), name) != MethodNames.end())
+	//	{
+	//		// Alternatively, this could actually overwrite the pre-existing method. 
+	//		throw runtime_error("Error: Attempting to overwrite exisiting exposed python function");
+	//	}
+
+	//	// We need the names in a list so their references stay valid
+	//	MethodNames.push_back(name);
+	//	const char * namePtr = MethodNames.back().c_str();
+
+	//	PyMethodDef method{ 0 };
+
+	//	if (docs.empty())
+	//		method = { namePtr, fnPtr, flags, NULL };
+	//	else {
+	//		MethodDocs.push_back(std::string(docs));
+	//		method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
+	//	}
+
+	//	m_ntBuf.push_back( method );
+	//}
+
+	//// These by default get the c_ptr capsule object
+	//MemberDefinitions::MemberDefinitions()
+	//{
+	//	MemberNames.push_back("c_ptr");
+	//	MemberDocs.push_back("pointer to a c object");
+	//	PyMemberDef d = { (char *)MemberNames.back().c_str(), T_OBJECT_EX, offsetof(_GenericPyClass, capsule), 0, (char *)MemberDocs.back().c_str() };
+	//	m_ntBuf.push_back( d );
+	//}
+
+	//// Add a member, preserving the null terminator and storing strings where they won't be destroyed
+	//void MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
+	//{
+	//	// If a member with this name has already been declared, throw an error
+	//	if (std::find(MemberNames.begin(), MemberNames.end(), name) != MemberNames.end())
+	//	{
+	//		// Alternatively, this could actually overwrite the pre-existing member. 
+	//		throw runtime_error("Error: Attempting to overwrite exisiting exposed python class member");
+	//	}
+
+	//	// We need the names in a list so their references stay valid
+	//	MemberNames.push_back(name);
+	//	char * namePtr = (char *)MemberNames.back().c_str();
+
+	//	PyMemberDef member{ 0 };
+	//	
+	//	if (docs.empty())
+	//		member = { namePtr, type, offset, flags, NULL };
+	//	else {
+	//		MemberDocs.push_back(std::string(docs));
+	//		member = { namePtr, type, offset, flags, (char *)MemberDocs.back().c_str() };
+	//	}
+
+	//	_insert(member);
+	//}
 
 	int RunCmd( std::string cmd )
 	{
@@ -400,38 +497,22 @@ namespace pyl
 	{
 	}
 
-	// ParentMod Constructor
-	ModuleDef::ModuleDef( const ModuleDef const * pParentMod, const std::string& moduleName, const std::string& moduleDocs ) :
-		// Let's hope the default copy constructor is sufficient
-		ModuleDef(*pParentMod)
-	{
-		m_strModName = moduleName;
-		m_strModDocs = moduleDocs;
-		m_fnCustomInit = [] ( Object o ) {};
-	}
-
 	// This is implemented here just to avoid putting these STL calls in the header
-	void ModuleDef::registerClass_impl( const std::type_index T, const std::string& className )
+	bool ModuleDef::registerClass_impl( const std::type_index T, const std::string& className )
 	{
-		// If we've already exposed this, don't bother
-		auto it = m_mapExposedClasses.find( T );
-		if ( it != m_mapExposedClasses.end() )
-			return;
-
-		// Add the type info to the map
-		m_mapExposedClasses.emplace( T, className );
+		return m_mapExposedClasses.emplace( T, className ).second;
 	}
 
 	// Implementation of expose object function that doesn't need to be in this header file
 	int ModuleDef::exposeObject_impl( const std::type_index T, const voidptr_t instance, const std::string& name, PyObject * mod )
 	{
 		// If we haven't declared the class, we can't expose it
-		auto it = m_mapExposedClasses.find( T );
-		if ( it == m_mapExposedClasses.end() )
+		auto itExpCls = m_mapExposedClasses.find( T );
+		if ( itExpCls == m_mapExposedClasses.end() )
 			return -1;
 
 		// Make ref to expose class object
-		ExposedClass& expCls = it->second;
+		_ExposedClassDef& expCls = itExpCls->second;
 
 		// If a module wasn't specified, just do main
 		mod = mod ? mod : PyImport_ImportModule( "__main__" );
@@ -439,13 +520,13 @@ namespace pyl
 			return -1;
 
 		// Allocate a new object instance given the PyTypeObject
-		PyObject* newPyObject = _PyObject_New( &expCls.m_TypeObject );
+		PyObject* newPyObject = _PyObject_New( expCls.GetTypeObject() );
 
 		// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
 		PyObject* capsule = PyCapsule_New( instance, NULL, NULL );
 
 		// Set the c_ptr member variable (which better exist) to the capsule
-		static_cast<GenericPyClass *>((voidptr_t) newPyObject)->capsule = capsule;
+		static_cast<_ExposedClassDef::_GenericPyClass *>((voidptr_t) newPyObject)->capsule = capsule;
 
 		// Make a variable in the module out of the new py object
 		int success = PyObject_SetAttrString( mod, name.c_str(), newPyObject );
@@ -477,26 +558,24 @@ namespace pyl
 				m_strModName.c_str(),
 				m_strModDocs.c_str(),
 				-1,
-				m_vMethodDef.Ptr()
+				(PyMethodDef *) m_ntMethodDefs.data()
 			};
 
 			// Create the module if possible
 			if ( PyObject * mod = PyModule_Create( &m_pyModDef ) )
 			{
 				// Declare all exposed classes within the module
-				for ( auto& exp_class : m_mapExposedClasses )
+				for ( auto& itExposedClass : m_mapExposedClasses )
 				{
-					// Get the classes PyTypeObject
-					auto pTypeObj = (PyTypeObject *) &(exp_class.second.m_TypeObject);
-					if ( PyType_Ready( pTypeObj ) < 0 )
-						assert( false );
+					_ExposedClassDef& expCls = itExposedClass.second;
 
-					// Again, we are acting under the assumption that these pointers remain valid
-					const char * className = exp_class.second.PyClassName.c_str();
-					PyObject * typeObj = (PyObject *) &exp_class.second.m_TypeObject;
+					// Get the classes itExposedClass
+					PyTypeObject * pTypeObj = expCls.GetTypeObject();
+					if ( expCls.IsPrepared() == false || PyType_Ready( pTypeObj ) < 0 )
+						throw pyl::runtime_error( "Error! Exposing class def prematurely!" );
 
-					// Add the type to the module
-					PyModule_AddObject( mod, className, typeObj );
+					// Add the type to the module, acting under the assumption that these pointers remain valid
+					PyModule_AddObject( mod, expCls.GetName(), (PyObject *) pTypeObj );
 				}
 
 				// Call the init function once the module is created
@@ -509,6 +588,26 @@ namespace pyl
 			// If creating the module failed for whatever reason
 			return (PyObject *)nullptr;
 		};
+	}
+
+	bool ModuleDef::addMethod_impl( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs )
+	{
+		if ( strMethodName.empty() )
+		{
+			throw std::runtime_error( "Error adding method " + strMethodName );
+			return false;
+		}
+
+		auto paInsert = m_setUsedMethodNames.insert( strMethodName );
+		if ( paInsert.second == false )
+		{
+			throw std::runtime_error( "Error: Attempting to overwrite exisiting exposed python function" );
+			return false;
+		}
+
+		const char * pName = paInsert.first->c_str();
+		const char * pDocs = docs.empty() ? nullptr : m_liMethodDocs.insert( m_liMethodDocs.end(), docs )->c_str();
+		m_ntMethodDefs.push_back( { pName, fnPtr, flags, pDocs } );
 	}
 
 	// This function locks down any exposed class definitions
