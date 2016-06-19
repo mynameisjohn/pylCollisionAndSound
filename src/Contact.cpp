@@ -29,6 +29,7 @@ Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec
 		// The inverse mass denominator is a coeffecient used to calculate impulses
 		// and depends on the object's inertia intertia, and it has a translation/rotation component
 		fDenom += 1.f / m_pCollidingPair[i]->fMass;
+
 		float rN = glm::dot( m_v2Radius[i], m_v2Normal );
 		fDenom += powf( rN, 2 ) / m_pCollidingPair[i]->GetInertia();
 	}

@@ -103,6 +103,8 @@ void Scene::Update()
 		fTotalEnergy += itOuter->GetKineticEnergy();
 	}
 
+	//std::cout << fTotalEnergy << std::endl;
+
 	// Solve contacts
 	m_ContactSolver.Solve( m_liSpeculativeContacts );
 }

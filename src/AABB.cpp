@@ -91,20 +91,102 @@ glm::vec2 AABB::GetFaceNormalFromPoint( const glm::vec2 p ) const
 
 ////////////////////////////////////////////////////////////////////////////
 
+// This is rather verbose, but it gets the job done
 std::list<Contact> GetSpecContacts( AABB * pA, AABB * pB )
 {
-	// Find the distance from A's center to B's
-	vec2 d = pB->v2Center - pA->v2Center;
+	// Contact normal and indices from each box
+	vec2 n;
+	int vIdxA, vIdxB;
+	// Vertical collision
+	if ( IsOverlappingX( pA, pB ) )
+	{
+		// If We're below
+		if ( pA->Top() < pB->Bottom() )
+		{
+			// top of A, bottpm of B
+			n = vec2( 0, 1 );
+			vIdxA = 3;
+			vIdxB = 1;
+		}
+		else
+		{
+			// bottom of A, top of B
+			n = vec2( 0, -1 );
+			vIdxA = 1;
+			vIdxB = 3;
+		}
+	}
+	// Horizontal collision
+	else if ( IsOverlappingY( pA, pB ) )
+	{
+		if ( pA->Right() < pB->Left() )
+		{
+			// right of A, left of B
+			n = vec2( 1, 0 );
+			vIdxA = 0;
+			vIdxB = 2;
+		}
+		else
+		{
+			// left of A, right of B
+			n = vec2( -1, 0 );
+			vIdxA = 2;
+			vIdxB = 0;
+		}
+	}
+	// Corner collision
+	else
+	{
+		// If we aren't overlapping in either direction
+		// handle a potential corner collision
+		bool bAIsLeft = (pA->Right() < pB->Left());
+		bool bAIsBelow = (pA->Top() < pB->Bottom());
+		if ( bAIsLeft )
+		{
+			if ( bAIsBelow )
+			{
+				// Top right of A, bottom left of B
+				vIdxA = 0;
+				vIdxB = 2;
+			}
+			else
+			{
+				// Bottom right of A, top left of B
+				vIdxA = 1;
+				vIdxB = 3;
+			}
+		}
+		else
+		{
+			if ( bAIsBelow )
+			{
+				// Top left of A, bottom right of B
+				vIdxA = 3;
+				vIdxB = 1;
+			}
+			else
+			{
+				// Bottom left of A, top right of B
+				vIdxA = 2;
+				vIdxB = 0;
+			}
+		}
 
-	// Clamp that vector to the box bounds, negating for b
-	vec2 a_pos = pA->Clamp( d );
-	vec2 b_pos = pB->Clamp( -d );
+		// We don't need to average contact positions for the corner case
+		vec2 posA = GetVert( pA, vIdxA );
+		vec2 posB = GetVert( pB, vIdxB );
+		n = glm::normalize( posB - posA );
+		float fDist = glm::distance( posA, posB );
+		return{ Contact( pA, pB, posA, posB, n, fDist ) };
+	}
 
-	// Find the distance between the two contact points
-	float dist = glm::length( a_pos - b_pos );
-
-	// Construct and return
-	return{ Contact( pA, pB, a_pos, b_pos, glm::normalize( d ), dist ) };
+	// For the face case, we get the two vertices from each colliding face
+	// and average them per face, so that the collision is not diminished
+	// by the radius arm of the contact. Distance is along direction of normal
+	vec2 posA = 0.5f * (GetVert( pA, vIdxA ) + GetVert( pA, vIdxA + 1 ));
+	vec2 posB = 0.5f * (GetVert( pB, vIdxB ) + GetVert( pB, vIdxB + 1 ));
+	float fDist = glm::dot( n, posB - posA );
+	return{ Contact( pA, pB, posA, posB, n, fDist ) };
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -150,18 +232,49 @@ std::list<Contact> GetSpecContacts( AABB * pAABB, OBB * pOBB )
 
 ////////////////////////////////////////////////////////////////////////////
 
+bool IsPointInside( vec2 p, AABB * pAABB )
+{
+	bool bX = fabs( p.x - pAABB->v2Center.x ) < pAABB->boxData.v2HalfDim.x;
+	bool bY = fabs( p.y - pAABB->v2Center.y ) < pAABB->boxData.v2HalfDim.y;
+	return bX && bY;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+bool IsOverlappingX( AABB* pA, AABB* pB )
+{
+	return (pA->Right() < pB->Left() || pA->Left() > pB->Right()) == false;
+}
+
+bool IsOverlappingY( AABB* pA, AABB* pB )
+{
+	return (pA->Top() < pB->Bottom() || pA->Bottom() > pB->Top()) == false;
+}
+
 bool IsOverlapping( AABB* pA, AABB* pB )
 {
-	return
-		(pA->Left() > pB->Right() || pA->Right() < pB->Left()) &&
-		(pA->Bottom() > pB->Top() || pA->Top() < pB->Bottom());
+	return IsOverlappingX( pA, pB ) && IsOverlappingY( pA, pB );
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 bool IsOverlapping( AABB * pAABB, OBB * pOBB )
 {
-	// NYI
+	// if any OBB verts are in AABB, return true
+	for ( int i = 0; i < 4; i++ )
+	{
+		vec2 p = GetVert( pOBB, i );
+		if ( IsPointInside( p, pAABB ) )
+			return true;
+	}
+	// And vice versa
+	for ( int i = 0; i < 4; i++ )
+	{
+		vec2 p = GetVert( pAABB, i );
+		if ( IsPointInside( p, pOBB ) )
+			return true;
+	}
+	// Otherwise return false
 	return false;
 }
 
@@ -170,9 +283,9 @@ bool IsOverlapping( AABB * pAABB, OBB * pOBB )
 glm::vec2 GetVert( AABB * pAABB, int idx )
 {
 	vec2 ret( 0 );
-	vec2 R = pAABB->v2Center;
-	switch ( idx % 4 )
-	{
+	vec2 R = pAABB->boxData.v2HalfDim;	// 3---0
+	switch ( idx % 4 )					// |   |
+	{									// 2---1
 		case 0:
 			return pAABB->v2Center + R;
 		case 1:
@@ -187,10 +300,10 @@ glm::vec2 GetVert( AABB * pAABB, int idx )
 
 ////////////////////////////////////////////////////////////////////////////
 
-glm::vec2 GetNormal( AABB * pAABB, int uIdx )
-{
-	switch ( uIdx % 4 )
-	{
+glm::vec2 GetNormal( AABB * pAABB, int idx )
+{										// --0--
+	switch ( idx % 4 )					// 3   1
+	{									// --2--
 		case 0:
 			return vec2( 1, 0 );
 		case 1:

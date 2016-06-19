@@ -3,6 +3,8 @@
 #include "CollisionFunctions.h"
 #include "GL_Util.h"
 
+#include <glm/gtx/norm.hpp>
+
 ////////////////////////////////////////////////////////////////////////////
 
 /*static*/ RigidBody2D Circle::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float radius )
@@ -94,4 +96,11 @@ bool IsOverlapping( Circle * pCirc, OBB * pOBB )
 {
 	// NYI
 	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+bool IsPointInside( vec2 p, Circle * pCirc )
+{
+	return glm::length2( pCirc->v2Center - p ) < powf( pCirc->circData.fRadius, 2 );
 }

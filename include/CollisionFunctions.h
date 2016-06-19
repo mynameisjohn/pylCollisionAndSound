@@ -30,10 +30,16 @@ bool IsOverlapping( Circle * pA, Circle * pB );
 bool IsOverlapping( Circle * pCirc, AABB * pAABB );
 bool IsOverlapping( Circle * pCirc, OBB * pOBB );
 
+bool IsOverlappingX( AABB * pA, AABB * pB );
+bool IsOverlappingY( AABB * pA, AABB * pB );
 bool IsOverlapping( AABB * pA, AABB * pB );
 bool IsOverlapping( AABB * pAABB, OBB * pOBB );
 
 bool IsOverlapping( OBB * pA, OBB * pB );
+
+bool IsPointInside( vec2 p, Circle * pCirc );
+bool IsPointInside( vec2 p, AABB * pAABB );
+//bool IsPointInside( vec2 p, OBB * pOBB );
 
 ////////////////////////////////////////////////////////////////////////////
 
