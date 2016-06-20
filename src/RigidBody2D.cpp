@@ -3,6 +3,8 @@
 #include "Util.h"
 #include "CollisionFunctions.h"
 
+#include <glm/gtx/norm.hpp>
+
 // Euler integrate rigid body translation/rotation
 void RigidBody2D::EulerAdvance( float fDT )
 {
@@ -43,7 +45,9 @@ vec2 RigidBody2D::GetMomentum() const
 
 float RigidBody2D::GetKineticEnergy() const
 {
-	return 0.5f * fMass * glm::dot( v2Vel, v2Vel );
+	float fKeTr = 0.5f * fMass * glm::length2( v2Vel );
+	float fKeRot = 0.5f * GetInertia() * powf( fOmega, 2 );
+	return fKeTr + fKeRot;
 }
 
 // Return the graphical quatvec transform of a rigid body

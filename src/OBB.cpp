@@ -164,8 +164,10 @@ std::list<Contact> GetSpecContacts( OBB * pA, OBB * pB )
 
 glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 {
-	vec2 rotBounds = GetRotMat() * boxData.v2HalfDim;
-	return glm::clamp( p, v2Center + rotBounds, v2Center - rotBounds );
+	// Find the clamped point in object space, transform back into world
+	vec2 osDiff = glm::inverse( GetRotMat() ) * (p - v2Center);
+	osDiff = glm::clamp( osDiff, -boxData.v2HalfDim, boxData.v2HalfDim );
+	return v2Center + GetRotMat() * osDiff;
 }
 
 /*static*/ RigidBody2D OBB::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th /*= 0.f*/ )
