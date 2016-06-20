@@ -114,7 +114,7 @@ int Scene::AddDrawable( std::string strIqmFile, vec2 T, vec2 S, vec4 C )
 	Drawable D;
 	try
 	{
-		D.Init( strIqmFile, C, quatvec( vec3( T, 0 ), fquat(1, 0, 0, 0), quatvec::Type::TRT ), S );
+		D.Init( strIqmFile, C, quatvec( vec3( T, 0 ), fquat(1, 0, 0, 0), quatvec::Type::TR ), S );
 	}
 	catch ( std::runtime_error )
 	{

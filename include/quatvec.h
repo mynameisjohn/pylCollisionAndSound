@@ -54,7 +54,7 @@ struct quatvec
 		switch ( eType )
 		{
 			case Type::TR:
-				
+				return glm::translate( vec ) * glm::mat4_cast( quat );
 			case Type::RT:
 				return glm::mat4_cast( quat ) * glm::translate( vec );
 			case Type::TRT:

@@ -312,6 +312,7 @@ namespace pyl
 		return convert_buf( o, &v[0], 4 );
 	}
 
+	// Type? Should be part of this...
 	bool convert( PyObject * o, quatvec& qv )
 	{
 		return convert_buf( o, &qv.vec[0], 7 );
@@ -349,6 +350,7 @@ namespace pyl
 		return PyLong_FromLong( (long) e );
 	}
 
+	// Not sure what the type should be here...
 	PyObject * alloc_pyobject( const quatvec& qv )
 	{
 		if ( PyObject * pList = PyList_New( 7 ) )

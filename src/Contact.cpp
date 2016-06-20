@@ -30,8 +30,12 @@ Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec
 		// and depends on the object's inertia intertia, and it has a translation/rotation component
 		fDenom += 1.f / m_pCollidingPair[i]->fMass;
 
-		float rN = glm::dot( m_v2Radius[i], m_v2Normal );
-		fDenom += powf( rN, 2 ) / m_pCollidingPair[i]->GetInertia();
+		// Right now OBB is the only primitive that rotates
+		if ( m_pCollidingPair[i]->eType == RigidBody2D::EType::OBB )
+		{
+			float rN = glm::dot( m_v2Radius[i], m_v2Normal );
+			fDenom += powf( rN, 2 ) / m_pCollidingPair[i]->GetInertia();
+		}
 	}
 	
 	// Is this necessary?
@@ -51,9 +55,12 @@ void Contact::ApplyImpulse( float fMag )
 	// Find the direction along our collision normal
 	vec2 v2Impulse = delImpulse * m_v2Normal;
 
-	// Apply to both objects in opposing directions
-	m_pA->v2Vel -= v2Impulse / m_pA->fMass;
-	m_pB->v2Vel += v2Impulse / m_pB->fMass;
+	for ( int i = 0; i < 2; i++ )
+	{
+		const float sgn = i == 0 ? -1.f : 1.f;
+		m_pCollidingPair[i]->v2Vel += sgn * v2Impulse / m_pCollidingPair[i]->fMass;
+		m_pCollidingPair[i]->fOmega += sgn * glm::dot(v2Impulse, m_v2Radius[i]) / m_pCollidingPair[i]->GetInertia();
+	}
 
 	// Add impulse to local var
 	m_fCurImpulse = newImpulse;

@@ -32,8 +32,8 @@ def InitEntities(cScene, loopManager):
     # Returna list of entities
     liEntities = []
 
-    liPos = [[5,0],[-5,4],[5,-4],[-1,-5]]
-    liVel = [[-2*v[0], -2*v[1]] for v in liPos]
+    liPos = [[5,.4],[-5,0]]#,[5,-4],[-1,-5]]
+    liVel = [[-v[0], 0] for v in liPos]
 
     # Add one entity for each state, as an OBB and a state as its sound component
     nodes = loopManager.GetStateGraph().G.nodes()
@@ -46,8 +46,8 @@ def InitEntities(cScene, loopManager):
         clr = DrawableLoopState.clrOff
         if s == loopManager.GetStateGraph().activeState:
             clr = DrawableLoopState.clrPlaying
-        if i%2:
-            rbArgs = (pylRigidBody2D.rbtAABB, vel, pos, 1., 1., { 'w' : scale[0],
+        if True:
+            rbArgs = (pylRigidBody2D.rbtOBB, vel, pos, 1., 1., { 'w' : scale[0],
                                                                   'h' : scale[1],
                                                                   'th' : 0.})
             drArgs = ('../models/quad.iqm', pos, scale, clr)
