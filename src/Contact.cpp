@@ -156,14 +156,16 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 
 			// Find the relative velocity of the system
 			const float relNv = vA_N - vB_N;
-			const float relVelNeeded = c.GetDistance() / g_fTimeStep;
+			const float nextDist = relNv * g_fTimeStep;
+			bool colliding = nextDist > c.GetDistance();
+			//const float relVelNeeded = c.GetDistance() / g_fTimeStep;
 
-			// Find out how much you'd remove to have them just touch
-			// (why is this negated?)
-			const float remove = relVelNeeded - relNv;
-
-			// Detect collision
-			bool colliding = (remove < -kEPS);
+			//// Find out how much you'd remove to have them just touch
+			//// (why is this negated?)
+			//const float remove = relVelNeeded - relNv;
+			//std::cout << nextDist << ", " << c.GetDistance() << std::endl;
+			//// Detect collision
+			//bool colliding = (remove < -kEPS);
 			if ( colliding )
 			{
 				uColCount++;

@@ -32,13 +32,13 @@ def InitEntities(cScene, loopManager):
     # Returna list of entities
     liEntities = []
 
-    liPos = [[-8, 0], [-5, 0.55], [5, -0.55], [8, 0]]
-    liVel = [[0, 0], [5, 0], [-5, 0], [0, 0]]
+    liPos = [[5,0],[-5,4],[5,-4],[-1,-5]]
+    liVel = [[-2*v[0], -2*v[1]] for v in liPos]
 
     # Add one entity for each state, as an OBB and a state as its sound component
     nodes = loopManager.GetStateGraph().G.nodes()
     dTH = 2 * math.pi / len(nodes)
-    for pos, vel, s in zip(liPos, liVel, nodes):
+    for i, pos, vel, s in zip(range(len(nodes)), liPos, liVel, nodes):
         #th = i * dTH - math.pi/2
         #pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
         #vel = [-p for p in pos]
@@ -46,13 +46,21 @@ def InitEntities(cScene, loopManager):
         clr = DrawableLoopState.clrOff
         if s == loopManager.GetStateGraph().activeState:
             clr = DrawableLoopState.clrPlaying
-        liEntities.append(Entity.Entity( cScene,
-            cScene.AddRigidBody(pylRigidBody2D.rbtAABB, vel, pos, 1., 1., {
-                                                                  'w' : scale[0],
+        if i%2:
+            rbArgs = (pylRigidBody2D.rbtAABB, vel, pos, 1., 1., { 'w' : scale[0],
                                                                   'h' : scale[1],
-                                                                  'th' : 0.}),         
-            cScene.AddDrawable('../models/quad.iqm', pos, scale, clr),
-            s))
+                                                                  'th' : 0.})
+            drArgs = ('../models/quad.iqm', pos, scale, clr)
+        else:
+            rbArgs = (pylRigidBody2D.rbtCircle, vel, pos, 1., 1., { 'r' : scale[0]/2.})
+            drArgs = ('../models/circle.iqm', pos, scale, clr)
+        liEntities.append(Entity.Entity( cScene, cScene.AddRigidBody(*rbArgs), cScene.AddDrawable(*drArgs), s))
+        #eType, vel, pos, 1., 1., {
+        #                                                          'w' : scale[0],
+        #                                                          'h' : scale[1],
+        #                                                          'th' : 0.}),         
+        #    cScene.AddDrawable(strModel, pos, scale, clr),
+        #    s))
 
     # Add nCircles entities, giving each a voice as its sound component
     #nCircles = 10

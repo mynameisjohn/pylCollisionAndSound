@@ -204,7 +204,7 @@ public:
 		const uint32_t IQM_VERSION = 2;
 		const char * IQM_MAGIC = "INTERQUAKEMODEL";
 
-		fp = fopen( szFilename, "r" );
+		fp = fopen( szFilename, "rb" );
 		IQMASSERT( fp, "Error: Invalid filename provided to IQM File constructor!" );
 
 		// Check the file size
@@ -221,7 +221,8 @@ public:
 			throw std::bad_alloc();
 
 		// Read file into buffer, close file
-		IQMASSERT( uFileSize == fread( pDataBuf, 1, uFileSize, fp ), "Error: Invalid number of bytes read in from file!" );
+		size_t uBytesRead = fread( pDataBuf, 1, uFileSize, fp );
+		IQMASSERT( uFileSize == uBytesRead, "Error: Invalid number of bytes read in from file!" );
 		fclose( fp );
 		fp = nullptr;
 

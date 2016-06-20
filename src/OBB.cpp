@@ -162,9 +162,57 @@ std::list<Contact> GetSpecContacts( OBB * pA, OBB * pB )
 
 ////////////////////////////////////////////////////////////////////////////
 
+glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
+{
+	vec2 rotBounds = GetRotMat() * boxData.v2HalfDim;
+	return glm::clamp( p, v2Center + rotBounds, v2Center - rotBounds );
+}
+
+/*static*/ RigidBody2D OBB::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th /*= 0.f*/ )
+{
+	RigidBody2D ret = RigidBody2D::Create( vel, c, mass, elasticity );
+	ret.boxData.v2HalfDim = v2R / 2.f;
+	ret.eType = RigidBody2D::EType::OBB;
+	return ret;
+}
+
+/*static*/ RigidBody2D OBB::Create( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h, float th /*= 0.f*/ )
+{
+	RigidBody2D ret = RigidBody2D::Create( vel, vec2( x, y ), mass, elasticity );
+	ret.boxData.v2HalfDim = vec2( w, h ) / 2.f;
+	ret.eType = RigidBody2D::EType::OBB;
+	return ret;
+}
+
+
+bool IsPointInside( vec2 p, OBB * pOBB )
+{
+	glm::vec2 d = p - pOBB->v2Center;
+	glm::vec2 xHat( cosf( pOBB->fTheta ), sinf( pOBB->fTheta ) );
+	bool bX = fabs( glm::dot( d, xHat ) ) < pOBB->boxData.v2HalfDim.x;
+	bool bY = fabs( glm::dot( d, perp( xHat ) ) ) < pOBB->boxData.v2HalfDim.y;
+	return bX && bY;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
 bool IsOverlapping( OBB * pA, OBB * pB )
 {
-	// NYI
+	// There may be a more efficient way of doing this
+	for ( int i = 0; i < 4; i++ )
+	{
+		vec2 p = GetVert( pA, i );
+		if ( IsPointInside( p, pB ) )
+			return true;
+	}
+	// And vice versa
+	for ( int i = 0; i < 4; i++ )
+	{
+		vec2 p = GetVert( pB, i );
+		if ( IsPointInside( p, pA ) )
+			return true;
+	}
+	// Otherwise return false
 	return false;
 }
 

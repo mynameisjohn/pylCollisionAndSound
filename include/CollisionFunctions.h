@@ -39,7 +39,7 @@ bool IsOverlapping( OBB * pA, OBB * pB );
 
 bool IsPointInside( vec2 p, Circle * pCirc );
 bool IsPointInside( vec2 p, AABB * pAABB );
-//bool IsPointInside( vec2 p, OBB * pOBB );
+bool IsPointInside( vec2 p, OBB * pOBB );
 
 ////////////////////////////////////////////////////////////////////////////
 
