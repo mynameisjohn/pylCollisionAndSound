@@ -98,19 +98,3 @@ struct OBB : public AABB
 	static RigidBody2D Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th = 0.f );
 	static RigidBody2D Create( glm::vec2 vel, float mass, float elasticity, float x, float y, float w, float h, float th = 0.f );
 };
-
-struct FeaturePair
-{
-	enum class EType : int
-	{
-		F_V,
-		V_F,
-		N
-	};
-	float dist;
-	float c_dist;
-	int fIdx;
-	int vIdx;
-	EType T;
-	FeaturePair( float d, float cd = -1, int f = -1, int v = -1, EType t = EType::N );
-};

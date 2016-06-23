@@ -3,171 +3,216 @@
 #include "GL_Util.h"
 #include "Util.h"
 
-// Static function to project a point p along the edge
-// between points e0 and e1
-static vec2 projectOnEdge( vec2 p, vec2 e0, vec2 e1 )
-{
-	// u and v form a little triangle
-	vec2 u = p - e0;
-	vec2 v = e1 - e0;
 
-	// find the projection of u onto v, parameterize it
-	float t = glm::dot( u, v ) / glm::dot( v, v );
-
-	//std::cout << t << ", " << glm::dot(u, v) << ", " << glm::dot(v,v) << std::endl;
-
-	// Clamp between two edge points
-	return e0 + v * clamp( t, 0.f, 1.f );
-}
-
-// Pick the best feature pair (penetrating or separating); A is the "face" object, B is the "vertex" object
-// Penetrating is a bit of a grey area atm
-static void featurePairJudgement( FeaturePair& mS, FeaturePair& mP, OBB * A, OBB * B, FeaturePair::EType type )
-{
-	// For all A's normals
-	for ( int fIdx = 0; fIdx < 4; fIdx++ )
-	{
-		vec2 n = GetNormal( A, fIdx );
-		vec2 p1 = GetVert( A, fIdx );
-		vec2 p2 = GetVert( A, (fIdx + 1) % 4 );
-
-		// For B's support verts relative to the normal
-		std::array<int, 2> supportVerts = { { -1, -1 } };
-		int nVerts = GetSupportIndices( B, -n, supportVerts );
-		for ( int s = 0; s < nVerts; s++ )
-		{
-			int sIdx = supportVerts[s];
-			vec2 sV = GetVert( B, sIdx );
-
-			// minkowski face points
-			vec2 mfp0 = sV - p1;
-			vec2 mfp1 = sV - p2;
-
-			// Find point on minkowski face
-			vec2 p = projectOnEdge( vec2(), mfp0, mfp1 );
-
-			// are objects penetrating?
-			// i.e is first mf point behind face normal
-			// penetration implies support vert behind normal
-			float dist = glm::dot( mfp0, n );
-			float c_dist = glm::length( sV - A->v2Center );
-			bool isPenetrating = dist < 0.f;
-
-			// fp points to the correct feature pair
-			FeaturePair * fp( nullptr );
-			if ( isPenetrating )
-				fp = &mP;
-			else
-			{
-				fp = &mS;
-				// Separation dist is the length from p to the origin
-				dist = glm::length( p );
-			}
-
-			// See whether or not this new feature pair is a good candidate
-			// For penetration, we want the largest negative value
-			bool accept = false;
-			if ( isPenetrating ? (dist > fp->dist) : (dist < fp->dist) )
-				accept = true;
-			else if ( feq( dist, fp->dist ) )
-			{
-				// If it's just about as close as the current best feature pair,
-				// pick the one whose distance is closest to the center of the face object
-				if ( c_dist < fp->c_dist )
-					accept = true;
-			}
-
-			// Reassign *fp as needed
-			if ( accept )
-				*fp = FeaturePair( dist, c_dist, fIdx, sIdx, type );
-		}
-	}
-}
+//
+//// Pick the best feature pair (penetrating or separating); A is the "face" object, B is the "vertex" object
+//// Penetrating is a bit of a grey area atm
+//static void featurePairJudgement( FeaturePair& mS, FeaturePair& mP, AABB * A, OBB * B, FeaturePair::EType type )
+//{
+//	// For all A's normals
+//	for ( int fIdx = 0; fIdx < 4; fIdx++ )
+//	{
+//		vec2 n = GetNormal( A, fIdx );
+//		vec2 p1 = GetVert( A, fIdx );
+//		vec2 p2 = GetVert( A, (fIdx + 1) % 4 );
+//
+//		// For B's support verts relative to the normal
+//		std::array<int, 2> supportVerts = { { -1, -1 } };
+//		int nVerts = GetSupportIndices( B, -n, supportVerts );
+//		for ( int s = 0; s < nVerts; s++ )
+//		{
+//			int sIdx = supportVerts[s];
+//			vec2 sV = GetVert( B, sIdx );
+//
+//			// minkowski face points
+//			vec2 mfp0 = sV - p1;
+//			vec2 mfp1 = sV - p2;
+//
+//			// Find point on minkowski face
+//			vec2 p = projectOnEdge( vec2(), mfp0, mfp1 );
+//
+//			// are objects penetrating?
+//			// i.e is first mf point behind face normal
+//			// penetration implies support vert behind normal
+//			float dist = glm::dot( mfp0, n );
+//			float c_dist = glm::length( sV - A->v2Center );
+//			bool isPenetrating = dist < 0.f;
+//
+//			// fp points to the correct feature pair
+//			FeaturePair * fp( nullptr );
+//			if ( isPenetrating )
+//				fp = &mP;
+//			else
+//			{
+//				fp = &mS;
+//				// Separation dist is the length from p to the origin
+//				dist = glm::length( p );
+//			}
+//
+//			// See whether or not this new feature pair is a good candidate
+//			// For penetration, we want the largest negative value
+//			bool accept = false;
+//			if ( isPenetrating ? (dist > fp->dist) : (dist < fp->dist) )
+//				accept = true;
+//			else if ( feq( dist, fp->dist ) )
+//			{
+//				// If it's just about as close as the current best feature pair,
+//				// pick the one whose distance is closest to the center of the face object
+//				if ( c_dist < fp->c_dist )
+//					accept = true;
+//			}
+//
+//			// Reassign *fp as needed
+//			if ( accept )
+//				*fp = FeaturePair( dist, c_dist, fIdx, sIdx, type );
+//		}
+//	}
+//}
 
 // Functions for getting speculative contacts
 std::list<Contact> GetSpecContacts( OBB * pA, OBB * pB )
 {
-	std::list<Contact> ret;
+	// I wonder if, as an early out, I can determine if the
+	// angles are very simlar and if so treat these as
+	// two AABB's at origin and then transform the contacts
+	//if ( feq( fabs( glm::dot( GetNormal( pA, 0 ), GetNormal( pB, 0 ) ) ), 1.f ) )
+	//{
+	//	auto ret = GetSpecContacts( (AABB *) pA, (AABB *) pB );
+	//	// For every contact, transform its positions by the 
+	//	// translation and rotation of the 
+	//}
 
-	// TODO are penetrating features working?
-	FeaturePair mostSeparated( FLT_MAX );
-	FeaturePair mostPenetrating( -FLT_MAX );
+	// Find the best face-vertex pair between the two
+	FaceVertexPair fp( pA, pB );
 
-	// Check our faces with their verts, then vice versa
-	featurePairJudgement( mostSeparated, mostPenetrating, pA, pB, FeaturePair::EType::F_V );
-	featurePairJudgement( mostSeparated, mostPenetrating, pA, pB, FeaturePair::EType::V_F );
+	// Project the two vertices of the face feature onto
+	// the edge formed by two vertices of the vertex feature
 
-	// Pick the correct feature pair
-	bool sep = (mostSeparated.dist > 0 && mostSeparated.T != FeaturePair::EType::N);
-	FeaturePair * fp = sep ? &mostSeparated : &mostPenetrating;
+	// Get the contact normal
+	vec2 cN = GetNormal( fp.pBestFace, fp.ixBestFace );
 
-	// We better have something
-	assert( fp->T != FeaturePair::EType::N );
+	// The face edge
+	vec2 v2F_e0 = GetVert( fp.pBestFace, fp.ixBestFace );
+	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace + 1 );
 
-	// A is face feature, B is vertex feature
-	OBB * pFace( nullptr ), * pVertex( nullptr );
-	if ( fp->T == FeaturePair::EType::F_V )
-	{
-		pFace = pA;
-		pVertex = pB;
-	}
-	else
-	{
-		pVertex = pA;
-		pFace = pB;
-	}
+	// The vertex edge (reversed because we want this CCW)
+	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert + 1 );
+	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert );
 
-	// Get the world space normal and edge points
-	// of the face feature
-	vec2 wN = GetNormal( pFace, fp->fIdx );
-	vec2 wE0 = GetVert( pFace, fp->fIdx );
-	vec2 wE1 = GetVert( pFace, fp->fIdx + 1 );
+	// The face contact positions are the projections
+	// of the two vertex edge points on the face edge
+	vec2 v2F_p0 = projectOnEdge( v2V_e0, v2F_e0, v2F_e1 );
+	vec2 v2F_p1 = projectOnEdge( v2V_e1, v2F_e0, v2F_e1 );
 
-	// Get the world space vertex of the vertex feature,
-	// and then get "supporting neighbor" of that vertex
-	// along the direction of the face feature edge, clockwise
-	std::array<vec2, 2> wV = GetSupportNeighbor( pVertex, -wN, fp->vIdx );
+	// The vertex contact positions are the projection of
+	// the two face vertices along the edge formed by V_p0,p1
+	vec2 v2V_p0 = projectOnEdge( v2F_e0, v2V_e0, v2V_e1 );
+	vec2 v2V_p1 = projectOnEdge( v2F_e1, v2V_e0, v2V_e1 );
 
-	//std::cout << wN << "\n" << wE0 << "\n" << wE1 << "\n" << wV0 << "\n" << wV1 << "\n" << std::endl;
+	// The contact distances are the projections of the
+	// distance between contact points along face normal
+	float fDist0 = glm::dot( cN, v2V_p0 - v2F_p0 );
+	float fDist1 = glm::dot( cN, v2V_p1 - v2F_p1 );
 
-	// Project edge points along vertex feature edge
-	vec2 p1 = projectOnEdge( wE0, wV[0], wV[1] );
-	vec2 p2 = projectOnEdge( wE1, wV[0], wV[1] );
+	//std::cout << glm::vec2( fDist0, fDist1 ) << std::endl;
 
-	// Project vertex points along face feature edge
-	vec2 p3 = projectOnEdge( wV[0], wE0, wE1 );
-	vec2 p4 = projectOnEdge( wV[1], wE0, wE1 );
+	// Construct the contact and get out
+	return{
+		Contact( fp.pBestFace, fp.pBestVert, v2F_p0,  v2V_p0, cN, fDist0 ),
+		Contact( fp.pBestFace, fp.pBestVert, v2F_p1,  v2V_p1, cN, fDist1 ),
+	};
 
-	// distance is point distance along face (contact) normal
-	float d1 = glm::dot( p1 - p4, wN );
-	float d2 = glm::dot( p2 - p3, wN );
+	//std::list<Contact> ret;
 
-	// If they're equal, collapse the two into one contact
-	// This could be used as an early out, if you have the balls
-	if ( feq( d1, d2 ) )
-	{
-		vec2 pA = 0.5f * (p1 + p2);
-		vec2 pB = 0.5f * (p3 + p4);
-		float d = glm::distance( pA, pB );
-		ret.emplace_back( pFace, pVertex, pA, pB, wN, d );
-	}
-	else
-	{   // Otherwise add two contacts points
-		ret.emplace_back( pFace, pVertex, p1, p4, wN, d1 );
-		ret.emplace_back( pFace, pVertex, p2, p3, wN, d2 );
-	}
+	//// TODO are penetrating features working?
+	//FeaturePair mostSeparated( FLT_MAX );
+	//FeaturePair mostPenetrating( -FLT_MAX );
 
-	return ret;
+	//// Check our faces with their verts, then vice versa
+	//featurePairJudgement( mostSeparated, mostPenetrating, pA, pB, FeaturePair::EType::F_V );
+	//featurePairJudgement( mostSeparated, mostPenetrating, pA, pB, FeaturePair::EType::V_F );
+
+	//// Pick the correct feature pair
+	//bool sep = (mostSeparated.dist > 0 && mostSeparated.T != FeaturePair::EType::N);
+	//FeaturePair * fp = sep ? &mostSeparated : &mostPenetrating;
+
+	//// We better have something
+	//assert( fp->T != FeaturePair::EType::N );
+
+	//// A is face feature, B is vertex feature
+	//OBB * pFace( nullptr ), * pVertex( nullptr );
+	//if ( fp->T == FeaturePair::EType::F_V )
+	//{
+	//	pFace = pA;
+	//	pVertex = pB;
+	//}
+	//else
+	//{
+	//	pVertex = pA;
+	//	pFace = pB;
+	//}
+
+	//// Get the world space normal and edge points
+	//// of the face feature
+	//vec2 wN = GetNormal( pFace, fp->fIdx );
+	//vec2 wE0 = GetVert( pFace, fp->fIdx );
+	//vec2 wE1 = GetVert( pFace, fp->fIdx + 1 );
+
+	//// Get the world space vertex of the vertex feature,
+	//// and then get "supporting neighbor" of that vertex
+	//// along the direction of the face feature edge, clockwise
+	//std::array<vec2, 2> wV = GetSupportNeighbor( pVertex, -wN, fp->vIdx );
+
+	////std::cout << wN << "\n" << wE0 << "\n" << wE1 << "\n" << wV0 << "\n" << wV1 << "\n" << std::endl;
+
+	//// Project edge points along vertex feature edge
+	//vec2 p1 = projectOnEdge( wE0, wV[0], wV[1] );
+	//vec2 p2 = projectOnEdge( wE1, wV[0], wV[1] );
+
+	//// Project vertex points along face feature edge
+	//vec2 p3 = projectOnEdge( wV[0], wE0, wE1 );
+	//vec2 p4 = projectOnEdge( wV[1], wE0, wE1 );
+
+	//// distance is point distance along face (contact) normal
+	//float d1 = glm::dot( p1 - p4, wN );
+	//float d2 = glm::dot( p2 - p3, wN );
+
+	//// If they're equal, collapse the two into one contact
+	//// This could be used as an early out, if you have the balls
+	//if ( feq( d1, d2 ) )
+	//{
+	//	vec2 pA = 0.5f * (p1 + p2);
+	//	vec2 pB = 0.5f * (p3 + p4);
+	//	float d = glm::distance( pA, pB );
+	//	ret.emplace_back( pFace, pVertex, pA, pB, wN, d );
+	//}
+	//else
+	//{   // Otherwise add two contacts points
+	//	ret.emplace_back( pFace, pVertex, p1, p4, wN, d1 );
+	//	ret.emplace_back( pFace, pVertex, p2, p3, wN, d2 );
+	//}
+
+	//return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 {
+	if ( eType == EType::AABB )
+		return Clamp( p );
+
 	// Find the clamped point in object space, transform back into world
 	vec2 osDiff = glm::inverse( GetRotMat() ) * (p - v2Center);
 	osDiff = glm::clamp( osDiff, -boxData.v2HalfDim, boxData.v2HalfDim );
 	return v2Center + GetRotMat() * osDiff;
+
+	vec2 u( cos( fTheta ), sin( fTheta ) );
+	vec2 v = perp( u );
+	vec2 d = p - v2Center;
+	vec2 pP( glm::dot( d, u ), glm::dot( d, v ) );
+	pP = Clamp( pP );
+	return pP.x * u + pP.y * v;
 }
 
 /*static*/ RigidBody2D OBB::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th /*= 0.f*/ )
@@ -175,6 +220,7 @@ glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 	RigidBody2D ret = RigidBody2D::Create( vel, c, mass, elasticity );
 	ret.boxData.v2HalfDim = v2R / 2.f;
 	ret.eType = RigidBody2D::EType::OBB;
+	ret.fTheta = th;
 	return ret;
 }
 
@@ -222,18 +268,22 @@ bool IsOverlapping( OBB * pA, OBB * pB )
 
 glm::vec2 GetVert( OBB * pOBB, int idx )
 {
-	vec2 ret( 0 ), R = pOBB->HalfDim();
-	switch ( idx % 4 )
+	if ( pOBB->eType == RigidBody2D::EType::AABB )
+		return GetVert( (AABB *) pOBB, idx );
+
+	vec2 v2Rad = pOBB->HalfDim();
+	glm::mat2 M = pOBB->GetRotMat();
+
+	switch ( (idx + 4) % 4 )
 	{
 		case 0:
-			return pOBB->v2Center + pOBB->GetRotMat() *  R;
+			return pOBB->v2Center + M *  v2Rad;
 		case 1:
-			return pOBB->v2Center + pOBB->GetRotMat() * vec2( R.x, -R.y );
+			return pOBB->v2Center + M * vec2( v2Rad.x, -v2Rad.y );
 		case 2:
-			return pOBB->v2Center - pOBB->GetRotMat() * R;
+			return pOBB->v2Center - M * v2Rad;
 		case 3:
-		default:
-			return pOBB->v2Center + pOBB->GetRotMat() * vec2( -R.x, R.y );
+			return pOBB->v2Center + M * vec2( -v2Rad.x, v2Rad.y );
 	}
 }
 
@@ -241,17 +291,22 @@ glm::vec2 GetVert( OBB * pOBB, int idx )
 
 glm::vec2 GetNormal( OBB * pOBB, int idx )
 {
+	if ( pOBB->eType == RigidBody2D::EType::AABB )
+		return GetNormal( (AABB *) pOBB, idx );
+
+	float c = cosf( pOBB->fTheta );
+	float s = sinf( pOBB->fTheta );
+
 	switch ( idx % 4 )
 	{
 		case 0:
-			return pOBB->GetRotMat() * vec2( 1, 0 );
+			return glm::vec2( c, s );
 		case 1:
-			return pOBB->GetRotMat() * vec2( 0, -1 );
+			return glm::vec2( s, -c );
 		case 2:
-			return pOBB->GetRotMat() * vec2( -1, 0 );
+			return glm::vec2( -c, -s );
 		case 3:
-		default:
-			return pOBB->GetRotMat() * vec2( 0, 1 );
+			return glm::vec2( -s, c );
 	}
 }
 

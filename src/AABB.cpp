@@ -1,7 +1,7 @@
 #include "RigidBody2D.h"
 #include "CollisionFunctions.h"
 #include "GL_Util.h"
-
+#include "Util.h"
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -193,41 +193,99 @@ std::list<Contact> GetSpecContacts( AABB * pA, AABB * pB )
 
 std::list<Contact> GetSpecContacts( AABB * pAABB, OBB * pOBB )
 {
-	std::list<Contact> ret;
-
-	// Find the vector from our center to theirs
-	vec2 centerVecN = pAABB->v2Center - pOBB->v2Center;
-	vec2 faceN( 0 );
-
-	// Make it a unit vector in the direction of largest magnitude
-	faceN = glm::normalize( maxComp( centerVecN ) );
-
-	// Get supporting vertex / vertices along that direction
-	std::array<int, 2> sV;
-	int nSupportVerts = GetSupportIndices( pOBB, faceN, sV );
-
-	// one support vert means a vertex-face collision
-	if ( nSupportVerts == 1 )
+	// I wonder if, as an early out, I can treat an OBB with
+	// an angle such that cos(fTheta) or sin(fTheta) is near 0
+	// as an AABB, since it's practically on axis
+	// cos(fTheta) = 0 case, though, i'd have to flip the dims
+	if ( feq( sinf( pOBB->fTheta ), 0 ) )
 	{
-		// Two contact points; the support vertex, and it's best neighbor
-		std::array<glm::vec2, 2> pA_arr = GetSupportNeighbor( pOBB, faceN, sV[0] );
-		for ( auto& pA : pA_arr )
-		{
-			vec2 pB = pAABB->Clamp( pA );
-			float d = glm::distance( pA, pB );
-			ret.emplace_back( pAABB, pOBB, pA, pB, faceN, d );
-		}
+		return GetSpecContacts( pAABB, (AABB *) pOBB );
 	}
-	// face-face collsion, average two support verts into one contact point
-	else
+	else if ( feq( cosf( pOBB->fTheta ), 0 ) )
 	{
-		vec2 pA = 0.5f * (GetVert( pOBB, sV[0] ) + GetVert( pOBB, sV[1] ));
-		vec2 pB = pAABB->Clamp( pA );
-		float d = glm::distance( pA, pB );
-		ret.emplace_back( pAABB, pOBB, pA, pB, faceN, d );
+		// Temporarily flip the half-dims
+		std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
+		auto ret = GetSpecContacts( pAABB, (AABB *) pOBB );
+		std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
+		return ret;
 	}
+	
+	// Find the best face-vertex pair between the two
+	FaceVertexPair fp( (OBB *) pAABB, pOBB );
 
-	return ret;
+	// Project the two vertices of the face feature onto
+	// the edge formed by two vertices of the vertex feature
+
+	// Get the contact normal
+	vec2 cN = GetNormal( fp.pBestFace, fp.ixBestFace );
+
+	// The face edge
+	vec2 v2F_e0 = GetVert( fp.pBestFace, fp.ixBestFace );
+	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace + 1 );
+
+	// The vertex edge (reversed because we want this CCW)
+	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert + 1);
+	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert );
+
+	// The face contact positions are the projections
+	// of the two vertex edge points on the face edge
+	vec2 v2F_p0 = projectOnEdge( v2V_e0, v2F_e0, v2F_e1 );
+	vec2 v2F_p1 = projectOnEdge( v2V_e1, v2F_e0, v2F_e1 );
+
+	// The vertex contact positions are the projection of
+	// the two face vertices along the edge formed by V_p0,p1
+	vec2 v2V_p0 = projectOnEdge( v2F_e0, v2V_e0, v2V_e1 );
+	vec2 v2V_p1 = projectOnEdge( v2F_e1, v2V_e0, v2V_e1 );
+
+	// The contact distances are the projections of the
+	// distance between contact points along face normal
+	float fDist0 = glm::dot( cN, v2V_p0 - v2F_p0 );
+	float fDist1 = glm::dot( cN, v2V_p1 - v2F_p1 );
+
+	//std::cout << glm::vec2( fDist0, fDist1 ) << std::endl;
+
+	// Construct the contact and get out
+	return{
+		Contact( fp.pBestFace, fp.pBestVert, v2F_p0,  v2V_p0, cN, fDist0 ),
+		Contact( fp.pBestFace, fp.pBestVert, v2F_p1,  v2V_p1, cN, fDist1 ),
+	};
+
+	//return GetSpecContacts( (OBB *) pAABB, pOBB );
+	//std::list<Contact> ret;
+
+	//// Find the vector from our center to theirs
+	//vec2 centerVecN = pAABB->v2Center - pOBB->v2Center;
+	//vec2 faceN( 0 );
+
+	//// Make it a unit vector in the direction of largest magnitude
+	//faceN = glm::normalize( maxComp( centerVecN ) );
+
+	//// Get supporting vertex / vertices along that direction
+	//std::array<int, 2> sV;
+	//int nSupportVerts = GetSupportIndices( pOBB, faceN, sV );
+
+	//// one support vert means a vertex-face collision
+	//if ( nSupportVerts == 1 )
+	//{
+	//	// Two contact points; the support vertex, and it's best neighbor
+	//	std::array<glm::vec2, 2> pA_arr = GetSupportNeighbor( pOBB, faceN, sV[0] );
+	//	for ( auto& pA : pA_arr )
+	//	{
+	//		vec2 pB = pAABB->Clamp( pA );
+	//		float d = glm::distance( pA, pB );
+	//		ret.emplace_back( pOBB, pAABB, pA, pB, faceN, d );
+	//	}
+	//}
+	//// face-face collsion, average two support verts into one contact point
+	//else
+	//{
+	//	vec2 pA = 0.5f * (GetVert( pOBB, sV[0] ) + GetVert( pOBB, sV[1] ));
+	//	vec2 pB = pAABB->Clamp( pA );
+	//	float d = glm::distance( pA, pB );
+	//	ret.emplace_back( pOBB, pAABB, pA, pB, faceN, d );
+	//}
+
+	//return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////
