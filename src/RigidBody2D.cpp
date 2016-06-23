@@ -238,12 +238,9 @@ FaceVertexPair::FaceVertexPair( OBB * pA, OBB * pB ) :
 
 		// Store the best face normal
 		vec2 v2FaceNrm = GetNormal( pBestFace, ixBestFace );
-
-		// Important! The two vertex indices must be stored in a
-		// clockwise fashion. The reason is because the GetVert
-		// and GetNormal functions treat ascending indices as 
-		// clockwise, and therefore the edge formed by the two
-		// vertices at these indices will also be clockwise
+		
+		// Here we're looking for the neighbor vertex, with ixBestVert, comprises
+		// the face whose normal is most out of line with the best face normal
 
 		// Clockwise neighbor vertex
 		int ixCW = ixBestVert + 1;
@@ -256,12 +253,8 @@ FaceVertexPair::FaceVertexPair( OBB * pA, OBB * pB ) :
 		float dCCW = glm::dot( nCCW, v2FaceNrm );
 
 		// Store the vertex ix that is the "earliest", clockwise
+		// later on we'll form an edge using ixBestVert, ixBestVert+1
 		if ( dCCW < dCW )
 			ixBestVert = ixCCW;
-
-		if (ixBestVert < 0 )
-		{
-			int x = 0; x++;
-		}
 	}
 }

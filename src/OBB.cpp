@@ -95,9 +95,9 @@ std::list<Contact> GetSpecContacts( OBB * pA, OBB * pB )
 	vec2 v2F_e0 = GetVert( fp.pBestFace, fp.ixBestFace );
 	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace + 1 );
 
-	// The vertex edge (reversed because we want this CCW)
-	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert + 1 );
-	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert );
+	// The vertex edge
+	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert );
+	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert + 1);
 
 	// The face contact positions are the projections
 	// of the two vertex edge points on the face edge
@@ -297,7 +297,7 @@ glm::vec2 GetNormal( OBB * pOBB, int idx )
 	float c = cosf( pOBB->fTheta );
 	float s = sinf( pOBB->fTheta );
 
-	switch ( idx % 4 )
+	switch ( (idx + 4) % 4 )
 	{
 		case 0:
 			return glm::vec2( c, s );

@@ -227,15 +227,29 @@ std::list<Contact> GetSpecContacts( AABB * pAABB, OBB * pOBB )
 	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert + 1);
 	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert );
 
-	// The face contact positions are the projections
-	// of the two vertex edge points on the face edge
-	vec2 v2F_p0 = projectOnEdge( v2V_e0, v2F_e0, v2F_e1 );
-	vec2 v2F_p1 = projectOnEdge( v2V_e1, v2F_e0, v2F_e1 );
-
 	// The vertex contact positions are the projection of
 	// the two face vertices along the edge formed by V_p0,p1
 	vec2 v2V_p0 = projectOnEdge( v2F_e0, v2V_e0, v2V_e1 );
 	vec2 v2V_p1 = projectOnEdge( v2F_e1, v2V_e0, v2V_e1 );
+
+	// We have to special case the two face contact positions
+	vec2 v2F_p0, v2F_p1;
+	if ( fp.pBestFace == pAABB )
+	{
+		// If the AABB is the face feature object,
+		// the two contact points are the midpoint
+		// of the face (so the collision doesn't lose
+		// any energy to a rotation that can't occur)
+		v2F_p0 = v2F_p1 = 0.5f * (v2F_e0 + v2F_e1);
+	}
+	else
+	{
+		// If the AABB is the vertex feature object,
+		// The face contact positions are the projections
+		// of the two vertex edge points on the face edge
+		v2F_p0 = projectOnEdge( v2V_e0, v2F_e0, v2F_e1 );
+		v2F_p1 = projectOnEdge( v2V_e1, v2F_e0, v2F_e1 );
+	}
 
 	// The contact distances are the projections of the
 	// distance between contact points along face normal
@@ -342,7 +356,7 @@ glm::vec2 GetVert( AABB * pAABB, int idx )
 {
 	vec2 ret( 0 );
 	vec2 R = pAABB->boxData.v2HalfDim;	// 3---0
-	switch ( idx % 4 )					// |   |
+	switch ( (idx + 4) % 4 )			// |   |
 	{									// 2---1
 		case 0:
 			return pAABB->v2Center + R;
@@ -360,7 +374,7 @@ glm::vec2 GetVert( AABB * pAABB, int idx )
 
 glm::vec2 GetNormal( AABB * pAABB, int idx )
 {										// --0--
-	switch ( idx % 4 )					// 3   1
+	switch ( (idx + 4) % 4 )			// 3   1
 	{									// --2--
 		case 0:
 			return vec2( 1, 0 );

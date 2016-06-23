@@ -31,7 +31,7 @@ Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec
 		fDenom += 1.f / m_pCollidingPair[i]->fMass;
 
 		// Right now OBB is the only primitive that rotates
-		if ( m_pCollidingPair[i]->eType == RigidBody2D::EType::OBB )
+		//if ( m_pCollidingPair[i]->eType == RigidBody2D::EType::OBB )
 		{
 			float rN = glm::dot( m_v2Radius[i], m_v2Normal );
 			fDenom += powf( rN, 2 ) / m_pCollidingPair[i]->GetInertia();
