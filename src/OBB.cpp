@@ -95,9 +95,9 @@ std::list<Contact> GetSpecContacts( OBB * pA, OBB * pB )
 	vec2 v2F_e0 = GetVert( fp.pBestFace, fp.ixBestFace );
 	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace + 1 );
 
-	// The vertex edge
-	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert );
-	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert + 1);
+	// The vertex edge (reversed because we want this CCW)
+	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert + 1 );
+	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert );
 
 	// The face contact positions are the projections
 	// of the two vertex edge points on the face edge
@@ -207,12 +207,12 @@ glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 	osDiff = glm::clamp( osDiff, -boxData.v2HalfDim, boxData.v2HalfDim );
 	return v2Center + GetRotMat() * osDiff;
 
-	vec2 u( cos( fTheta ), sin( fTheta ) );
-	vec2 v = perp( u );
-	vec2 d = p - v2Center;
-	vec2 pP( glm::dot( d, u ), glm::dot( d, v ) );
-	pP = Clamp( pP );
-	return pP.x * u + pP.y * v;
+	//vec2 u( cos( fTheta ), sin( fTheta ) );
+	//vec2 v = perp( u );
+	//vec2 d = p - v2Center;
+	//vec2 pP( glm::dot( d, u ), glm::dot( d, v ) );
+	//pP = Clamp( pP );
+	//return pP.x * u + pP.y * v;
 }
 
 /*static*/ RigidBody2D OBB::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th /*= 0.f*/ )
@@ -297,7 +297,7 @@ glm::vec2 GetNormal( OBB * pOBB, int idx )
 	float c = cosf( pOBB->fTheta );
 	float s = sinf( pOBB->fTheta );
 
-	switch ( (idx + 4) % 4 )
+	switch ( idx % 4 )
 	{
 		case 0:
 			return glm::vec2( c, s );
@@ -308,4 +308,123 @@ glm::vec2 GetNormal( OBB * pOBB, int idx )
 		case 3:
 			return glm::vec2( -s, c );
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+int GetSupportVerts( OBB * pOBB, glm::vec2 n, std::array<glm::vec2, 2>& sV )
+{
+	int foundIdx( -1 );
+
+	// Find the furthest vertex
+	float dMin = -FLT_MAX;
+	for ( int i = 0; i < 4; i++ )
+	{
+		vec2 v = GetVert( pOBB, i );
+		float d = glm::dot( n, v );
+		if ( d > dMin )
+		{
+			dMin = d;
+			sV[0] = v;
+			foundIdx = i;
+		}
+	}
+
+	int num( 1 );
+
+	// If there's a different vertex
+	for ( int i = 0; i < 4; i++ )
+	{
+		if ( i == foundIdx )
+			continue;
+		vec2 v = GetVert( pOBB, i );
+		float d = glm::dot( n, v );
+		// That's pretty close...
+		if ( feq( d, dMin, 100.f * kEPS ) )
+		{
+			// Take it too
+			dMin = d;
+			sV[num++] = v;
+		}
+	}
+
+	return num;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+int GetSupportIndices( OBB * pOBB, glm::vec2 n, std::array<int, 2>& sV )
+{
+	// Find the furthest vertex
+	float dMin = -FLT_MAX;
+	for ( int i = 0; i < 4; i++ )
+	{
+		vec2 v = GetVert( pOBB, i );
+		float d = glm::dot( n, v );
+		if ( d > dMin )
+		{
+			dMin = d;
+			sV[0] = i;
+		}
+	}
+
+	int num( 1 );
+
+	// If there's a different vertex
+	for ( int i = 0; i < 4; i++ )
+	{
+		if ( i == sV[0] )
+			continue;
+		vec2 v = GetVert( pOBB, i );
+		float d = glm::dot( n, v );
+		// That's pretty close...
+		if ( feq( d, dMin, 100.f * kEPS ) )
+		{
+			// Take it too
+			dMin = d;
+			sV[num++] = i;
+		}
+	}
+
+	return num;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+std::array<glm::vec2, 2> GetSupportNeighbor( OBB * pOBB, glm::vec2 n, int idx )
+{
+	std::array<vec2, 2> ret;
+
+	vec2 vb = GetVert( pOBB, idx );
+	vec2 va = GetVert( pOBB, idx - 1 );
+	vec2 vc = GetVert( pOBB, idx + 1 );
+
+	vec2 nab = glm::normalize( perp( vb - va ) );
+	vec2 nbc = glm::normalize( perp( vc - vb ) );
+	float d1 = glm::dot( nab, n );
+	float d2 = glm::dot( nbc, n );
+
+	if ( d1 > d2 )
+		return{ { va, vb } };
+	return{ { vb, vc } };
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+glm::vec2 GetSupportNormal( OBB * pOBB, glm::vec2 N )
+{
+	uint32_t iMin( 0 );
+	float dMin( -FLT_MAX );
+
+	for ( uint32_t i = 0; i<4; i++ )
+	{
+		float d = glm::dot( N, GetNormal( pOBB, i ) );
+		if ( d > dMin )
+		{
+			dMin = d;
+			iMin = i;
+		}
+	}
+
+	return GetNormal( pOBB, iMin );
 }

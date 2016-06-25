@@ -33,7 +33,8 @@ RigidBody2D::RigidBody2D( glm::vec2 vel, glm::vec2 c, float mass, float elastici
 	fOmega( 0 ),
 	v2Vel( vel ),
 	v2Center( c )
-{}
+{
+}
 
 /*static*/ RigidBody2D RigidBody2D::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, float th /*= 0.f*/ )
 {
@@ -190,26 +191,27 @@ void FaceVertexPair::judge( OBB * pFace, OBB * pVert )
 		vec2 F = pFace->WorldSpaceClamp( V );
 
 		// Get the distance between the face point and vertex
-		float fDist = glm::distance( V, F );
+		float fDist = glm::distance2( V, F );
 
 		// If this distance is less than our current dist, 
 		// store it as our current best pair
-		if ( fDist < fBestDist )
+		if ( fDist < fBestDist && !(feq( fDist, fBestDist, 0.01f )) )
 		{
 			pBestFace = pFace;
 			pBestVert = pVert;
 			ixBestVert = i;
 			fBestDist = fDist;
+			v2BestFacePoint = F;
 		}
 	}
 }
 
 FaceVertexPair::FaceVertexPair( OBB * pA, OBB * pB ) :
-	fBestDist( FLT_MAX ),
 	ixBestFace( -1 ),
 	ixBestVert( -1 ),
 	pBestFace( nullptr ),
-	pBestVert( nullptr )
+	pBestVert( nullptr ),
+	fBestDist( FLT_MAX )
 {
 	if ( pA && pB )
 	{
@@ -217,44 +219,125 @@ FaceVertexPair::FaceVertexPair( OBB * pA, OBB * pB ) :
 		judge( pA, pB );
 		judge( pB, pA );
 
-		// Get the best face idx (from normal)
-		// We want the index of the face normal that points
-		// most strongly at the closest vertex (ixBestVert)
-		// In other words, we want the normal onto which the vector
-		// from the best vertex to pBestVert's center projects least
-		float fMinProj = FLT_MAX;
-		vec2 v2VertexDir = GetVert( pBestVert, ixBestVert ) - pBestVert->v2Center;
-		for ( int i = 0; i < 4; i++ )
+
+
+		//if ( pBestFace->eType == RigidBody2D::EType::AABB )
+		//{
+		//	if ( v2BestFacePoint.x < pBestFace->v2Center.x )
+		//	{
+		//		if ( v2BestFacePoint.y < pBestFace->Top() )
+		//		{
+		//			// Left
+		//			ixBestFace = 2;
+		//		}
+		//		else
+		//		{
+		//			// Top
+		//			ixBestFace = 3;
+		//		}
+		//	}
+		//	else
+		//	{
+		//		if ( v2BestFacePoint.y > pBestFace->Bottom() )
+		//		{
+		//			// Right
+		//			ixBestFace = 0;
+		//		}
+		//		else
+		//		{
+		//			// Bottom
+		//			ixBestFace = 1;
+		//		}
+		//	}
+		//}
+		//else
 		{
-			// Get the normal, find the projection, determine if it's a candidate
-			vec2 n = GetNormal( pBestFace, i );
-			float fProjection = glm::dot( n, v2VertexDir );
-			if ( fProjection < fMinProj )
+			//vec2 D = v2BestFacePoint - pBestFace->v2Center;
+
+			// Get the best face idx (from normal)
+			// We want the index of the face normal that points
+			// most strongly at the closest vertex (ixBestVert)
+			// In other words, we want the normal onto which the vector
+			// from the best vertex to pBestVert's center projects least
+			float fMinProj = FLT_MAX;
+			vec2 v2BestVert = GetVert( pBestVert, ixBestVert );
+			for ( int i = 0; i < 4; i++ )
 			{
-				fMinProj = fProjection;
-				ixBestFace = i;
+				vec2 n = GetNormal( pBestFace, i );
+				vec2 p0 = GetVert( pBestFace, i );
+				vec2 p1 = GetVert( pBestFace, i + 1 );
+
+				vec2 mfp0 = v2BestVert - p0;
+				vec2 mfp1 = v2BestVert - p1;
+				vec2 projPt = projectOnEdge( vec2(), mfp0, mfp1 );
+				float fProjection = glm::length2( projPt );
+
+				// Get the normal, find the projection, determine if it's a candidate
+				
+				//float fProjection = glm::dot( n, v2VertexDir );
+				if ( fProjection < fMinProj )
+				{
+					fMinProj = fProjection;
+					ixBestFace = i;
+				}
 			}
 		}
 
+		vec2 v2Nrm = GetNormal( pBestFace, ixBestFace );
+
+
+		// Get the second best vertex, pick it
+		// if it's index is lower (edges are CW)
+		// (should the normal come into play here?)
+		fBestDist = FLT_MAX;
+		int ixSecondBest = -2;
+		for ( int i = ixBestVert - 1; i <= ixBestVert + 1; i++ )
+		{
+			if ( i == ixBestVert )
+				continue;
+
+			// Get the vertex
+			vec2 V = GetVert( pBestVert, i );
+
+			// Get the closest point to V on pFace
+			vec2 F = pBestFace->WorldSpaceClamp( V );
+
+			// Get the distance between the face point and vertex
+			float fDist = glm::distance2( V, F );
+
+			// If this distance is less than our current dist, 
+			// store it as our current best pair
+			if ( fDist < fBestDist )
+			{
+				ixSecondBest = i;
+				fBestDist = fDist;
+				v2BestFacePoint = F;
+			}
+		}
+		assert( ixSecondBest != -2 );
+		if ( ixSecondBest < ixBestVert )
+			ixBestVert = ixSecondBest;
+
+
 		// Store the best face normal
-		vec2 v2FaceNrm = GetNormal( pBestFace, ixBestFace );
+//		vec2 v2FaceNrm = GetNormal( pBestFace, ixBestFace );
 		
 		// Here we're looking for the neighbor vertex, with ixBestVert, comprises
 		// the face whose normal is most out of line with the best face normal
 
-		// Clockwise neighbor vertex
-		int ixCW = ixBestVert + 1;
-		vec2 nCW = GetNormal( pBestVert, ixCW );
-		float dCW = glm::dot( nCW, v2FaceNrm );
+		//// Clockwise neighbor vertex
+		//int ixCW = ixBestVert + 1;
+		//vec2 nCW = GetNormal( pBestVert, ixCW );
+		//float dCW = glm::dot( nCW, v2FaceNrm );
 
-		// Counterclockwise neigbor vertex
-		int ixCCW = ixBestVert - 1;
-		vec2 nCCW = GetNormal( pBestVert, ixCCW );
-		float dCCW = glm::dot( nCCW, v2FaceNrm );
+		//// Counterclockwise neigbor vertex
+		//int ixCCW = ixBestVert - 1;
+		//vec2 nCCW = GetNormal( pBestVert, ixCCW );
+		//float dCCW = glm::dot( nCCW, v2FaceNrm );
 
-		// Store the vertex ix that is the "earliest", clockwise
-		// later on we'll form an edge using ixBestVert, ixBestVert+1
-		if ( dCCW < dCW )
-			ixBestVert = ixCCW;
+		//// Store the vertex ix that is the "earliest", clockwise
+		//// later on we'll form an edge using ixBestVert, ixBestVert+1
+		//if ( dCCW < dCW )
+		//	ixBestVert = ixCCW;
 	}
 }

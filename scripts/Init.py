@@ -32,7 +32,7 @@ def InitEntities(cScene, loopManager):
     # Returna list of entities
     liEntities = []
 
-    liPos = [[5,.4],[-5,0]]#,[5,-4],[-1,-5]]
+    liPos = [[-5,0],[0,.5]]#,[5,-4],[-1,-5]]
     liVel = [[-v[0], 0] for v in liPos]
 
     # Add one entity for each state, as an OBB and a state as its sound component
@@ -46,14 +46,16 @@ def InitEntities(cScene, loopManager):
         clr = DrawableLoopState.clrOff
         if s == loopManager.GetStateGraph().activeState:
             clr = DrawableLoopState.clrPlaying
-        if True:
+        if i%2:
             rbArgs = (pylRigidBody2D.rbtOBB, vel, pos, 1., 1., { 'w' : scale[0],
                                                                   'h' : scale[1],
                                                                   'th' : 0.})
-            drArgs = ('../models/quad.iqm', pos, scale, clr)
+        #    drArgs = ('../models/quad.iqm', pos, scale, clr)
         else:
-            rbArgs = (pylRigidBody2D.rbtCircle, vel, pos, 1., 1., { 'r' : scale[0]/2.})
-            drArgs = ('../models/circle.iqm', pos, scale, clr)
+            rbArgs = (pylRigidBody2D.rbtAABB, vel, pos, 1., 1., { 'w' : scale[0],
+                                                                  'h' : scale[1],
+                                                                  'th' : 0.})
+        drArgs = ('../models/quad.iqm', pos, scale, clr)
         liEntities.append(Entity.Entity( cScene, cScene.AddRigidBody(*rbArgs), cScene.AddDrawable(*drArgs), s))
         #eType, vel, pos, 1., 1., {
         #                                                          'w' : scale[0],
@@ -70,6 +72,8 @@ def InitEntities(cScene, loopManager):
     #        cScene.AddRigidBody(pylRigidBody2D.rbtCircle, [0.,0.], [0.,0.], 1., 1., {'r' : 1.}),
     #        cScene.AddDrawable('circle.iqm', [0., 0.], [1., 1.], [1., 0., 1., 1.]),
     #        vIdx))
+
+    #liEntities.append(Entity.Entity(cScene, cScene.AddRigidBody(pylRigidBody2D.rbtAABB
 
     # return the list
     return liEntities 

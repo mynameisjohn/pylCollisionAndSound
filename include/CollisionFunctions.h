@@ -84,6 +84,7 @@ private:
 	// finds the point on pFace closest to 
 	// one of pVert's vertices
 	float	fBestDist;
+	glm::vec2 v2BestFacePoint;
 	void judge( OBB * pFace, OBB * pVert );
 };
 

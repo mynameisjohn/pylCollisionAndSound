@@ -170,7 +170,7 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 			//// Find out how much you'd remove to have them just touch
 			//// (why is this negated?)
 			//const float remove = relVelNeeded - relNv;
-			//std::cout << nextDist << ", " << c.GetDistance() << std::endl;
+			std::cout << nextDist << ", " << c.GetDistance() << std::endl;
 			//// Detect collision
 			//bool colliding = (remove < -kEPS);
 			if ( colliding )
@@ -194,17 +194,18 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 
 	return uNumCollisions;
 }
-
+#include <glm/gtc/random.hpp>
 void Contact::InitDrawable( std::array<Drawable *, 2> drPtrArr ) const
 {
 	const float drScale = 0.2f;
+	vec4 v4Color = glm::linearRand( vec4( vec3( 0.3 ), 1 ), vec4( 1 ) );
 	for ( int i = 0; i < 2; i++ )
 	{
 		if ( drPtrArr[i] )
 		{
 			quatvec qv; 
 			qv.vec = vec3( m_v2Pos[i], 1.f );
-			drPtrArr[i]->Init( "../models/quad.iqm", vec4( 1 ), qv, vec2( drScale ) );
+			drPtrArr[i]->Init( "../models/quad.iqm", v4Color, qv, vec2( drScale ) );
 		}
 	}
 }

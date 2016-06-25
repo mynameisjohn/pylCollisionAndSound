@@ -2,6 +2,7 @@
 #include "CollisionFunctions.h"
 #include "GL_Util.h"
 #include "Util.h"
+#include <glm/gtx/norm.hpp>
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -197,18 +198,18 @@ std::list<Contact> GetSpecContacts( AABB * pAABB, OBB * pOBB )
 	// an angle such that cos(fTheta) or sin(fTheta) is near 0
 	// as an AABB, since it's practically on axis
 	// cos(fTheta) = 0 case, though, i'd have to flip the dims
-	if ( feq( sinf( pOBB->fTheta ), 0 ) )
-	{
-		return GetSpecContacts( pAABB, (AABB *) pOBB );
-	}
-	else if ( feq( cosf( pOBB->fTheta ), 0 ) )
-	{
-		// Temporarily flip the half-dims
-		std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
-		auto ret = GetSpecContacts( pAABB, (AABB *) pOBB );
-		std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
-		return ret;
-	}
+	//if ( feq( sinf( pOBB->fTheta ), 0 ) )
+	//{
+	//	GetSpecContacts( pAABB, (AABB *) pOBB );
+	//}
+	//else if ( feq( cosf( pOBB->fTheta ), 0 ) )
+	//{
+	//	// Temporarily flip the half-dims
+	//	std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
+	//	auto ret = GetSpecContacts( pAABB, (AABB *) pOBB );
+	//	std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
+	//	ret;
+	//}
 	
 	// Find the best face-vertex pair between the two
 	FaceVertexPair fp( (OBB *) pAABB, pOBB );
@@ -221,16 +222,16 @@ std::list<Contact> GetSpecContacts( AABB * pAABB, OBB * pOBB )
 
 	// The face edge
 	vec2 v2F_e0 = GetVert( fp.pBestFace, fp.ixBestFace );
-	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace + 1 );
+	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace +1 );
 
 	// The vertex edge (reversed because we want this CCW)
-	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert + 1);
-	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert );
+	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert);
+	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert +1);
 
 	// The vertex contact positions are the projection of
 	// the two face vertices along the edge formed by V_p0,p1
-	vec2 v2V_p0 = projectOnEdge( v2F_e0, v2V_e0, v2V_e1 );
-	vec2 v2V_p1 = projectOnEdge( v2F_e1, v2V_e0, v2V_e1 );
+	vec2 v2V_p1 = projectOnEdge( v2F_e0, v2V_e0, v2V_e1 );
+	vec2 v2V_p0 = projectOnEdge( v2F_e1, v2V_e0, v2V_e1 );
 
 	// We have to special case the two face contact positions
 	vec2 v2F_p0, v2F_p1;
@@ -255,6 +256,9 @@ std::list<Contact> GetSpecContacts( AABB * pAABB, OBB * pOBB )
 	// distance between contact points along face normal
 	float fDist0 = glm::dot( cN, v2V_p0 - v2F_p0 );
 	float fDist1 = glm::dot( cN, v2V_p1 - v2F_p1 );
+
+	if ( glm::distance2( v2V_p0, v2V_p1 ) < kEPS )
+		return{ Contact( fp.pBestFace, fp.pBestVert, v2F_p0,  v2V_p0, cN, fDist0 ) };
 
 	//std::cout << glm::vec2( fDist0, fDist1 ) << std::endl;
 
