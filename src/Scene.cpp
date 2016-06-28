@@ -50,7 +50,7 @@ void Scene::Draw()
 		dr.Draw();
 	}
 
-	//if ( m_bDrawContacts )
+	if ( m_bDrawContacts )
 	{
 		Drawable d1, d2;
 		std::array<Drawable *, 2> pContactDr = { &d1, &d2 };
@@ -68,46 +68,6 @@ void Scene::Draw()
 			}
 		}
 	}
-
-	//int x, y;
-	//SDL_GetMouseState( &x, &y );
-	//glm::vec2 v2MousePos( x, y ) ;
-	//v2MousePos /= 80.f;
-	//v2MousePos -= 5.f;
-	//v2MousePos *= 2.f*vec2( 1, -1 );
-	////std::cout << v2MousePos << std::endl;
-
-	//Drawable mouseDr;
-	//mouseDr.Init( "../models/circle.iqm", vec4( 1, 0, 0, 1 ), quatvec( fquat( 1, 0, 0, 0 ), vec3( v2MousePos, 0 ) ), vec2( 0.3f ) );
-	//mat4 PMV = P * mouseDr.GetMV();
-	//vec4 c = mouseDr.GetColor();
-	//glUniformMatrix4fv( pmvHandle, 1, GL_FALSE, glm::value_ptr( PMV ) );
-	//glUniform4fv( clrHandle, 1, glm::value_ptr( c ) );
-	//mouseDr.Draw();
-
-	//for ( RigidBody2D rb : m_vRigidBodies )
-	//{
-	//	if ( rb.eType == RigidBody2D::EType::OBB )
-	//	{
-	//		vec2 v2ClampedPoint = ((OBB *) &rb)->WorldSpaceClamp( v2MousePos );
-	//		mouseDr.Init( "../models/circle.iqm", vec4( 1, 0, 0, 1 ), quatvec( fquat( 1, 0, 0, 0 ), vec3( v2ClampedPoint, 0 ) ), vec2( 0.3f ) );
-	//		mat4 PMV = P * mouseDr.GetMV();
-	//		vec4 c = mouseDr.GetColor();
-	//		glUniformMatrix4fv( pmvHandle, 1, GL_FALSE, glm::value_ptr( PMV ) );
-	//		glUniform4fv( clrHandle, 1, glm::value_ptr( c ) );
-	//		mouseDr.Draw();
-	//	}
-	//	else if ( rb.eType == RigidBody2D::EType::AABB )
-	//	{
-	//		vec2 v2ClampedPoint = ((AABB *) &rb)->Clamp( v2MousePos );
-	//		mouseDr.Init( "../models/circle.iqm", vec4( 1, 0, 0, 1 ), quatvec( fquat( 1, 0, 0, 0 ), vec3( v2ClampedPoint, 0 ) ), vec2( 0.3f ) );
-	//		mat4 PMV = P * mouseDr.GetMV();
-	//		vec4 c = mouseDr.GetColor();
-	//		glUniformMatrix4fv( pmvHandle, 1, GL_FALSE, glm::value_ptr( PMV ) );
-	//		glUniform4fv( clrHandle, 1, glm::value_ptr( c ) );
-	//		mouseDr.Draw();
-	//	}
-	//}
 
 	// Swap window
 	SDL_GL_SwapWindow( m_pWindow );
@@ -144,7 +104,7 @@ void Scene::Update()
 		fTotalEnergy += itOuter->GetKineticEnergy();
 	}
 
-	//std::cout << fTotalEnergy << std::endl;
+	std::cout << fTotalEnergy << std::endl;
 
 	// Solve contacts
 	m_ContactSolver.Solve( m_liSpeculativeContacts );

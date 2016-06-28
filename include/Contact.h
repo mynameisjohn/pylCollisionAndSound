@@ -15,6 +15,7 @@ class Contact
 {
 public:
 	// Construct from pairs (I wonder if I can just keep them in memory)
+	Contact();
 	Contact( RigidBody2D * pA, RigidBody2D * pB,		// Pointers to the pair
 			 const glm::vec2 posA, const glm::vec2 posB,// Positions of the pair
 			 const glm::vec2 nrm,						// Collision normal

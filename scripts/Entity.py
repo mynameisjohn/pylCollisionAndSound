@@ -37,5 +37,5 @@ class Entity:
         self.liCollisions.clear()
 
     def HandleCollision(self, eOther):
-        print(self, 'is colliding with', eOther)
+        #print(self, 'is colliding with', eOther)
         self.liCollisions.append(eOther)     

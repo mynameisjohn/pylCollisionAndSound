@@ -3,216 +3,307 @@
 #include "GL_Util.h"
 #include "Util.h"
 
+#include <glm/gtx/norm.hpp>
 
-//
-//// Pick the best feature pair (penetrating or separating); A is the "face" object, B is the "vertex" object
-//// Penetrating is a bit of a grey area atm
-//static void featurePairJudgement( FeaturePair& mS, FeaturePair& mP, AABB * A, OBB * B, FeaturePair::EType type )
-//{
-//	// For all A's normals
-//	for ( int fIdx = 0; fIdx < 4; fIdx++ )
-//	{
-//		vec2 n = GetNormal( A, fIdx );
-//		vec2 p1 = GetVert( A, fIdx );
-//		vec2 p2 = GetVert( A, (fIdx + 1) % 4 );
-//
-//		// For B's support verts relative to the normal
-//		std::array<int, 2> supportVerts = { { -1, -1 } };
-//		int nVerts = GetSupportIndices( B, -n, supportVerts );
-//		for ( int s = 0; s < nVerts; s++ )
-//		{
-//			int sIdx = supportVerts[s];
-//			vec2 sV = GetVert( B, sIdx );
-//
-//			// minkowski face points
-//			vec2 mfp0 = sV - p1;
-//			vec2 mfp1 = sV - p2;
-//
-//			// Find point on minkowski face
-//			vec2 p = projectOnEdge( vec2(), mfp0, mfp1 );
-//
-//			// are objects penetrating?
-//			// i.e is first mf point behind face normal
-//			// penetration implies support vert behind normal
-//			float dist = glm::dot( mfp0, n );
-//			float c_dist = glm::length( sV - A->v2Center );
-//			bool isPenetrating = dist < 0.f;
-//
-//			// fp points to the correct feature pair
-//			FeaturePair * fp( nullptr );
-//			if ( isPenetrating )
-//				fp = &mP;
-//			else
-//			{
-//				fp = &mS;
-//				// Separation dist is the length from p to the origin
-//				dist = glm::length( p );
-//			}
-//
-//			// See whether or not this new feature pair is a good candidate
-//			// For penetration, we want the largest negative value
-//			bool accept = false;
-//			if ( isPenetrating ? (dist > fp->dist) : (dist < fp->dist) )
-//				accept = true;
-//			else if ( feq( dist, fp->dist ) )
-//			{
-//				// If it's just about as close as the current best feature pair,
-//				// pick the one whose distance is closest to the center of the face object
-//				if ( c_dist < fp->c_dist )
-//					accept = true;
-//			}
-//
-//			// Reassign *fp as needed
-//			if ( accept )
-//				*fp = FeaturePair( dist, c_dist, fIdx, sIdx, type );
-//		}
-//	}
-//}
+// Used to handle collisions between OBBs
+struct FeaturePair
+{
+	// The type of anticipated collision 
+	enum class EType
+	{
+		None = 0,
+		FaceAVertexB,
+		FaceBVertexA
+	};
+
+	float fDist2;	// Distance from vertex to face, squared
+	float fCenDist2;// Distance vertex to face center, squared
+	int ixVert;		// index of closest vert
+	int ixFace;		// index of closest face
+	EType eType;	// type of anticipated colllision
+
+	FeaturePair() :
+		fDist2( FLT_MAX ),
+		fCenDist2( FLT_MAX ),
+		ixVert( INT_MIN ),
+		ixFace( INT_MIN ),
+		eType( EType::None )
+	{}
+	FeaturePair( float fD2, float fCenD2, float iV, int iF, EType e ) :
+		fDist2( fD2 ),
+		fCenDist2( fCenD2 ),
+		ixVert( iV ),
+		ixFace( iF ),
+		eType( e )
+	{}
+};
+
+// A convenience struct that contains a vertex
+// from an OBB and the vertex's index on that OBB
+struct SupportVertex
+{
+	vec2 v;
+	int idx;
+};
+
+// Given an OBB and a direction, return either 1 or 2
+// vertices that are most in line with that direction
+int GetSupportVerts( OBB * pOBB, vec2 N, std::array<SupportVertex, 2> * aSV )
+{
+	// Temporarily move the box back to the origin
+	vec2 v2Center = pOBB->v2Center;
+	pOBB->v2Center = vec2();
+
+	int ixClosest( -1 ), ixSecondClosest( -1 );
+	float fClosestDist( -FLT_MAX ), fSecondClosestDist( -FLT_MAX );
+
+	// Find the index whose direction from the origin
+	// most closely aligns with the normal
+	for ( int i = 0; i < 4; i++ )
+	{
+		float fDist = glm::dot( N, GetVert( pOBB, i ) );
+		if ( fDist > fClosestDist )
+		{
+			fClosestDist = fDist;
+			ixClosest = i;
+		}
+	}
+
+	// See if there's a very close runner up (happens quite often...)
+	for ( int i = 0; i < 4; i++ )
+	{
+		if ( i == ixClosest )
+			continue;
+
+		float fDist = glm::dot( N, GetVert( pOBB, i ) );
+		if ( feq( fDist, fClosestDist ) )
+		{
+			fSecondClosestDist = fDist;
+			ixSecondClosest = i;
+		}
+	}
+
+	// Reassign center
+	pOBB->v2Center = v2Center;
+
+	// Fill array, return count
+	aSV->at( 0 ) = { GetVert( pOBB, ixClosest ), ixClosest };
+
+	if ( ixSecondClosest != -1 )
+	{
+		aSV->at( 1 ) = { GetVert( pOBB, ixSecondClosest ), ixSecondClosest };
+		return 2;
+	}
+
+	return 1;
+}
+
+// Given an OBB, and index on that OBB, and a normal, find the neighbor of the
+// vertex at that index who helps form an edge most in line with the normal
+std::array<glm::vec2, 2> GetSupportNeighbor( OBB * pOBB, vec2 n, int ixSupportVert )
+{
+	vec2 vA = GetVert( pOBB, ixSupportVert - 1 );
+	vec2 vB = GetVert( pOBB, ixSupportVert );
+	vec2 vC = GetVert( pOBB, ixSupportVert + 1 );
+
+	vec2 nAB = glm::normalize( perp( vB - vA ) );
+	vec2 nBC = glm::normalize( perp( vB - vA ) );
+
+	if ( glm::dot( n, nAB ) < glm::dot( n, nBC ) )
+		return{ vA, vB };
+	return{ vB, vC };
+}
+
+// Algorithm used to find feature pairs in OBBs by treating one as the face object and one as the verex object
+// This is the algorithm outlined by Paul Firth at http://www.wildbunny.co.uk/blog/2011/04/20/collision-detection-for-dummies/
+// It's rather expensive and could possibly be done without walking so many vertices and faces, but for now I'd 
+// prefer to be clear and explicit
+void JudgeFeatures( OBB * pFace, OBB * pVertex, FeaturePair * pMostSep, FeaturePair * pMostPen, FeaturePair::EType e )
+{
+	// For every face in pFace
+	for ( int i = 0; i < 4; i++ )
+	{
+		// Get the face normal and the edge of that face
+		const vec2 wsN = GetNormal( pFace, i );
+		const vec2 wsV0 = GetVert( pFace, i );
+		const vec2 wsV1 = GetVert( pFace, i + 1 );
+
+		// Get the support vertices along the negative of that normal (closest to the face)
+		std::array<SupportVertex, 2> aSupportVerts;
+		for ( int j = 0; j < GetSupportVerts( pVertex, -wsN, &aSupportVerts ); j++ )
+		{
+			// Form the minkowski face of {wsV0, wsV1} - {aSupportVerts[j].v}
+			const vec2 mfp0 = aSupportVerts[j].v - wsV0;
+			const vec2 mfp1 = aSupportVerts[j].v - wsV1;
+
+			// The distance of the vertex from the normal is the projection of
+			// the vector from the first edge vertex to the support vertex
+			// along the direction of the face normal
+			float fDist = glm::dot( wsN, mfp0 );
+
+			// Compute the squared distance and squared center distance
+			float fDist2 = fDist * fDist;
+			float fCenterDist2 = glm::distance2( aSupportVerts[j].v, pFace->v2Center );
+
+			// If the projection has a positive value, we are separated
+			if ( fDist2 > 0 )
+			{
+				// The real distance between the vertex and face is the projection
+				// of the origin onto the minkowski face (like GJK, I think)
+				const vec2 projPoint = projectOnEdge( vec2(), mfp0, mfp1 );
+				fDist2 = glm::length2( projPoint );
+
+				// If this is a better candidate, reassign
+				if ( fDist2 < pMostSep->fDist2 )
+				{
+					*pMostSep = FeaturePair( fDist2, fCenterDist2, aSupportVerts[j].idx, i, e );
+				}
+				// If they're very close
+				else if ( feq( fDist2, pMostSep->fDist2 ) && pMostSep->eType == e )
+				{
+					// Pick the vertex closest to the face object's center
+					if ( fCenterDist2 < pMostSep->fCenDist2 )
+					{
+						*pMostSep = FeaturePair( fDist2, fCenterDist2, aSupportVerts[j].idx, i, e );
+					}
+					// If theose two are very close as well...
+					else if ( feq( fCenterDist2, pMostSep->fCenDist2 ) )
+					{
+						// Some wishful thinking - if we're this desparate, pick the feature pair
+						// with a normal that is most in line with the distance between the two centers
+						vec2 d = pVertex->v2Center - pFace->v2Center;
+						vec2 oldN = GetNormal( pFace, pMostSep->ixFace );
+
+						// If the distance vector more closely aligns with this face normal, reassign
+						if ( glm::dot( wsN, d ) > glm::dot( oldN, d ) )
+							*pMostSep = FeaturePair( fDist2, fCenterDist2, aSupportVerts[j].idx, i, e );
+					}
+				}
+			}
+			// If the projected value was negative, we are penetrating
+			else
+			{
+				// We want the greatest penetration distance
+				if ( fDist2 > pMostPen->fDist2 )
+				{
+					// reassign mostPenetrating
+					*pMostPen = FeaturePair( fDist2, fCenterDist2, aSupportVerts[j].idx, i, e );
+				}
+				// A lot of this ambiguity case logic is copied from above
+				else if ( feq( fDist2, pMostPen->fDist2 ) && pMostPen->eType == e )
+				{
+					if ( fCenterDist2 < pMostPen->fCenDist2 )
+					{
+						*pMostPen = FeaturePair( fDist2, fCenterDist2, aSupportVerts[j].idx, i, e );
+					}
+					else if ( feq( fCenterDist2, pMostSep->fCenDist2 ) )
+					{
+						vec2 d = pVertex->v2Center - pFace->v2Center;
+						vec2 oldN = GetNormal( pFace, pMostSep->ixFace );
+
+						if ( glm::dot( wsN, d ) > glm::dot( oldN, d ) )
+							*pMostPen = FeaturePair( fDist2, fCenterDist2, aSupportVerts[j].idx, i, e );
+					}
+				}
+			}
+		}
+	}
+
+}
 
 // Functions for getting speculative contacts
 std::list<Contact> GetSpecContacts( OBB * pA, OBB * pB )
 {
-	// I wonder if, as an early out, I can determine if the
-	// angles are very simlar and if so treat these as
-	// two AABB's at origin and then transform the contacts
-	//if ( feq( fabs( glm::dot( GetNormal( pA, 0 ), GetNormal( pB, 0 ) ) ), 1.f ) )
-	//{
-	//	auto ret = GetSpecContacts( (AABB *) pA, (AABB *) pB );
-	//	// For every contact, transform its positions by the 
-	//	// translation and rotation of the 
-	//}
+	// We're going to want the closest face-vertex feature pair
+	FeaturePair fpMostSeparated, fpMostPenetrating;
+	fpMostPenetrating.fDist2 = -FLT_MAX;
+	FeaturePair::EType e;
 
-	// Find the best face-vertex pair between the two
-	FaceVertexPair fp( pA, pB );
+	// Find the feature pair that is the best candidate for collision detection
+	JudgeFeatures( pA, pB, &fpMostSeparated, &fpMostPenetrating, FeaturePair::EType::FaceAVertexB );
+	JudgeFeatures( pB, pA, &fpMostSeparated, &fpMostPenetrating, FeaturePair::EType::FaceBVertexA );
 
-	// Project the two vertices of the face feature onto
-	// the edge formed by two vertices of the vertex feature
+	// Determine who is the face and who is the vertex
+	FeaturePair * pFeaturePair = nullptr;
+	OBB * pFace = nullptr, *pVertex = nullptr;
+	if ( fpMostPenetrating.fDist2 <= 0 && fpMostPenetrating.eType != FeaturePair::EType::None )
+	{
+		pFeaturePair = &fpMostPenetrating;
+	}
+	else if ( fpMostSeparated.fDist2 > 0 && fpMostSeparated.eType != FeaturePair::EType::None )
+	{
+		pFeaturePair = &fpMostSeparated;
+	}
+	else
+	{
+		throw std::runtime_error( "Something went wrong during an OBB-OBB in GetSpecContacts(OBB *, OBB *)!" );
+		return{};
+	}
 
-	// Get the contact normal
-	vec2 cN = GetNormal( fp.pBestFace, fp.ixBestFace );
+	// All this feels rather clunky...
+	if ( pFeaturePair->eType == FeaturePair::EType::FaceAVertexB )
+	{
+		pFace = pA;
+		pVertex = pB;
+	}
+	else //if ( pFeaturePair->eType == FeaturePair::EType::FaceBVertexA )
+	{
+		pVertex = pA;
+		pFace = pB;
+	}
 
-	// The face edge
-	vec2 v2F_e0 = GetVert( fp.pBestFace, fp.ixBestFace );
-	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace + 1 );
+	// Get the face normal and edge on pFace, in world space
+	vec2 faceN = GetNormal( pFace, pFeaturePair->ixFace );
+	vec2 faceEdge0 = GetVert( pFace, pFeaturePair->ixFace );
+	vec2 faceEdge1 = GetVert( pFace, pFeaturePair->ixFace + 1 );
 
-	// The vertex edge (reversed because we want this CCW)
-	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert + 1 );
-	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert );
+	// Get the support neighbor of the vertex object, given the face normal (forming an edge on pVertex)
+	std::array<vec2, 2> aVertices = GetSupportNeighbor( pVertex, faceN, pFeaturePair->ixVert );
 
-	// The face contact positions are the projections
-	// of the two vertex edge points on the face edge
-	vec2 v2F_p0 = projectOnEdge( v2V_e0, v2F_e0, v2F_e1 );
-	vec2 v2F_p1 = projectOnEdge( v2V_e1, v2F_e0, v2F_e1 );
+	// Project the two edges onto each other to form the contact positions
+	vec2 ptFace0 = projectOnEdge( aVertices[1], faceEdge0, faceEdge1 );
+	vec2 ptFace1 = projectOnEdge( aVertices[0], faceEdge0, faceEdge1 );
+	vec2 ptVert0 = projectOnEdge( faceEdge0, aVertices[0], aVertices[1] );
+	vec2 ptVert1 = projectOnEdge( faceEdge1, aVertices[0], aVertices[1] );
 
-	// The vertex contact positions are the projection of
-	// the two face vertices along the edge formed by V_p0,p1
-	vec2 v2V_p0 = projectOnEdge( v2F_e0, v2V_e0, v2V_e1 );
-	vec2 v2V_p1 = projectOnEdge( v2F_e1, v2V_e0, v2V_e1 );
+	// And their distances
+	float fDist0 = glm::dot( faceN, ptVert0 - ptFace0 );
+	float fDist1 = glm::dot( faceN, ptVert1 - ptFace1 );
 
-	// The contact distances are the projections of the
-	// distance between contact points along face normal
-	float fDist0 = glm::dot( cN, v2V_p0 - v2F_p0 );
-	float fDist1 = glm::dot( cN, v2V_p1 - v2F_p1 );
-
-	//std::cout << glm::vec2( fDist0, fDist1 ) << std::endl;
-
-	// Construct the contact and get out
-	return{
-		Contact( fp.pBestFace, fp.pBestVert, v2F_p0,  v2V_p0, cN, fDist0 ),
-		Contact( fp.pBestFace, fp.pBestVert, v2F_p1,  v2V_p1, cN, fDist1 ),
+	// If they're very close, collapse into one contact in the middle of the edge
+	if ( feq( glm::distance2( ptVert0, ptFace0 ), glm::distance2( ptVert1, ptFace1 ) ) )
+	{
+		vec2 ptFace = 0.5f * (ptFace0 + ptFace1);
+		vec2 ptVert = 0.5f * (ptVert0 + ptVert1);
+		return{ Contact( pFace, pVertex, ptFace, ptVert, faceN, glm::dot( faceN, ptVert - ptFace ) ) };
+	}
+	
+	// Otherwise return both
+	return{ 
+		Contact( pFace, pVertex, ptFace0, ptVert0, faceN, fDist0 ),
+		Contact( pFace, pVertex, ptFace1, ptVert1, faceN, fDist1 ) 
 	};
-
-	//std::list<Contact> ret;
-
-	//// TODO are penetrating features working?
-	//FeaturePair mostSeparated( FLT_MAX );
-	//FeaturePair mostPenetrating( -FLT_MAX );
-
-	//// Check our faces with their verts, then vice versa
-	//featurePairJudgement( mostSeparated, mostPenetrating, pA, pB, FeaturePair::EType::F_V );
-	//featurePairJudgement( mostSeparated, mostPenetrating, pA, pB, FeaturePair::EType::V_F );
-
-	//// Pick the correct feature pair
-	//bool sep = (mostSeparated.dist > 0 && mostSeparated.T != FeaturePair::EType::N);
-	//FeaturePair * fp = sep ? &mostSeparated : &mostPenetrating;
-
-	//// We better have something
-	//assert( fp->T != FeaturePair::EType::N );
-
-	//// A is face feature, B is vertex feature
-	//OBB * pFace( nullptr ), * pVertex( nullptr );
-	//if ( fp->T == FeaturePair::EType::F_V )
-	//{
-	//	pFace = pA;
-	//	pVertex = pB;
-	//}
-	//else
-	//{
-	//	pVertex = pA;
-	//	pFace = pB;
-	//}
-
-	//// Get the world space normal and edge points
-	//// of the face feature
-	//vec2 wN = GetNormal( pFace, fp->fIdx );
-	//vec2 wE0 = GetVert( pFace, fp->fIdx );
-	//vec2 wE1 = GetVert( pFace, fp->fIdx + 1 );
-
-	//// Get the world space vertex of the vertex feature,
-	//// and then get "supporting neighbor" of that vertex
-	//// along the direction of the face feature edge, clockwise
-	//std::array<vec2, 2> wV = GetSupportNeighbor( pVertex, -wN, fp->vIdx );
-
-	////std::cout << wN << "\n" << wE0 << "\n" << wE1 << "\n" << wV0 << "\n" << wV1 << "\n" << std::endl;
-
-	//// Project edge points along vertex feature edge
-	//vec2 p1 = projectOnEdge( wE0, wV[0], wV[1] );
-	//vec2 p2 = projectOnEdge( wE1, wV[0], wV[1] );
-
-	//// Project vertex points along face feature edge
-	//vec2 p3 = projectOnEdge( wV[0], wE0, wE1 );
-	//vec2 p4 = projectOnEdge( wV[1], wE0, wE1 );
-
-	//// distance is point distance along face (contact) normal
-	//float d1 = glm::dot( p1 - p4, wN );
-	//float d2 = glm::dot( p2 - p3, wN );
-
-	//// If they're equal, collapse the two into one contact
-	//// This could be used as an early out, if you have the balls
-	//if ( feq( d1, d2 ) )
-	//{
-	//	vec2 pA = 0.5f * (p1 + p2);
-	//	vec2 pB = 0.5f * (p3 + p4);
-	//	float d = glm::distance( pA, pB );
-	//	ret.emplace_back( pFace, pVertex, pA, pB, wN, d );
-	//}
-	//else
-	//{   // Otherwise add two contacts points
-	//	ret.emplace_back( pFace, pVertex, p1, p4, wN, d1 );
-	//	ret.emplace_back( pFace, pVertex, p2, p3, wN, d2 );
-	//}
-
-	//return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 {
+	// Invoke base if needed
 	if ( eType == EType::AABB )
 		return Clamp( p );
 
-	// Find the clamped point in object space, transform back into world
-	vec2 osDiff = glm::inverse( GetRotMat() ) * (p - v2Center);
-	osDiff = glm::clamp( osDiff, -boxData.v2HalfDim, boxData.v2HalfDim );
-	return v2Center + GetRotMat() * osDiff;
+	// u and v are x and y in the OBB's local space
+	vec2 u( cos( fTheta ), sin( fTheta ) );
+	vec2 v = perp( u );
 
-	//vec2 u( cos( fTheta ), sin( fTheta ) );
-	//vec2 v = perp( u );
-	//vec2 d = p - v2Center;
-	//vec2 pP( glm::dot( d, u ), glm::dot( d, v ) );
-	//pP = Clamp( pP );
-	//return pP.x * u + pP.y * v;
+	// Transform the vector from the center into OBB local space, clamp to half dim
+	vec2 d = p - v2Center;
+	vec2 localPoint( glm::dot( d, u ), glm::dot( d, v ) );
+	localPoint = glm::clamp( localPoint, -boxData.v2HalfDim, boxData.v2HalfDim );
+
+	// Transform back into world space
+	return v2Center + localPoint.x * u + localPoint.y * v;
 }
 
 /*static*/ RigidBody2D OBB::Create( glm::vec2 vel, glm::vec2 c, float mass, float elasticity, glm::vec2 v2R, float th /*= 0.f*/ )
@@ -387,26 +478,6 @@ int GetSupportIndices( OBB * pOBB, glm::vec2 n, std::array<int, 2>& sV )
 	}
 
 	return num;
-}
-
-////////////////////////////////////////////////////////////////////////////
-
-std::array<glm::vec2, 2> GetSupportNeighbor( OBB * pOBB, glm::vec2 n, int idx )
-{
-	std::array<vec2, 2> ret;
-
-	vec2 vb = GetVert( pOBB, idx );
-	vec2 va = GetVert( pOBB, idx - 1 );
-	vec2 vc = GetVert( pOBB, idx + 1 );
-
-	vec2 nab = glm::normalize( perp( vb - va ) );
-	vec2 nbc = glm::normalize( perp( vc - vb ) );
-	float d1 = glm::dot( nab, n );
-	float d2 = glm::dot( nbc, n );
-
-	if ( d1 > d2 )
-		return{ { va, vb } };
-	return{ { vb, vc } };
 }
 
 ////////////////////////////////////////////////////////////////////////////

@@ -98,11 +98,79 @@ std::list<Contact> GetSpecContacts( AABB * pA, AABB * pB )
 	// Contact normal and indices from each box
 	vec2 n;
 	int vIdxA, vIdxB;
-	// Vertical collision
-	if ( IsOverlappingX( pA, pB ) )
+
+	// Get the overlap directions
+	bool bX = IsOverlappingX( pA, pB );
+	bool bY = IsOverlappingY( pA, pB );
+
+	// If we have a genuine overlap, then I haven't done my job...
+	if ( bX && bY )
+	{	
+		// Find the direction of least penetration (X or Y),
+		// take A's face in that direction to be the collision normal
+		float fPenX( 0 ), fPenY( 0 );
+		int vIdxAX( 0 ), vIdxAY( 0 ), vIdxBX( 0 ), vIdxBY(0);
+		vec2 v2NrmX, v2NrmY;
+
+		// Determine which direction the overlap occurs in X
+		if ( pA->Right() > pB->Left() && pA->Left() < pB->Right() )
+		{
+			// A is overlapping B from the left
+			fPenX = std::min( 0.f, pB->Left() - pA->Right() );
+			v2NrmX = vec2( 1, 0 );
+			vIdxAX = 0;
+			vIdxBX = 2;
+		}
+		else
+		{
+			// A is overlapping B from the right
+			fPenX = std::min( 0.f, pA->Left() - pB->Right() );
+			v2NrmX = vec2( -1, 0 );
+			vIdxAX = 2;
+			vIdxBX = 0;
+		}
+
+		// Determine which direction the overlap occurs in X
+		if ( pA->Top() > pB->Bottom() && pA->Bottom() < pB->Top() )
+		{
+			// A is overlapping B from below
+			fPenY = std::min( 0.f, pB->Bottom() - pA->Top() );
+			v2NrmY = vec2( 0, 1 );
+			vIdxAY = 3;
+			vIdxBY = 1;
+		}
+		else
+		{
+			// A is overlapping B from above
+			fPenY = std::min( 0.f, pA->Bottom() - pB->Top() );
+			v2NrmY = vec2( 0, -1 );
+			vIdxAY = 1;
+			vIdxBY = 3;
+		}
+
+		// Pick the least penetration distance
+		// The penetration distances are <= 0,
+		// and we want the one closest to 0
+		if ( fPenX > fPenY )
+		{
+			// X penetrates less than Y
+			n = v2NrmX;
+			vIdxA = vIdxAX;
+			vIdxB = vIdxBX;
+		}
+		else
+		{
+			// the other way around
+			n = v2NrmY;
+			vIdxA = vIdxAY;
+			vIdxB = vIdxBY;
+		}
+	}
+	// We're overlapping X, worry about vertical collisions
+	else if ( bX )
 	{
 		// If We're below
-		if ( pA->Top() < pB->Bottom() )
+		if ( pA->Top() <= pB->Bottom() )
 		{
 			// top of A, bottpm of B
 			n = vec2( 0, 1 );
@@ -117,8 +185,8 @@ std::list<Contact> GetSpecContacts( AABB * pA, AABB * pB )
 			vIdxB = 3;
 		}
 	}
-	// Horizontal collision
-	else if ( IsOverlappingY( pA, pB ) )
+	// We're overlapping Y, worry about horizontal collisions
+	else if ( bY )
 	{
 		if ( pA->Right() < pB->Left() )
 		{
@@ -135,9 +203,8 @@ std::list<Contact> GetSpecContacts( AABB * pA, AABB * pB )
 			vIdxB = 0;
 		}
 	}
-	// Corner collision
 	else
-	{
+	{		
 		// If we aren't overlapping in either direction
 		// handle a potential corner collision
 		bool bAIsLeft = (pA->Right() < pB->Left());
@@ -194,79 +261,11 @@ std::list<Contact> GetSpecContacts( AABB * pA, AABB * pB )
 
 std::list<Contact> GetSpecContacts( AABB * pAABB, OBB * pOBB )
 {
-	// I wonder if, as an early out, I can treat an OBB with
-	// an angle such that cos(fTheta) or sin(fTheta) is near 0
-	// as an AABB, since it's practically on axis
-	// cos(fTheta) = 0 case, though, i'd have to flip the dims
-	//if ( feq( sinf( pOBB->fTheta ), 0 ) )
-	//{
-	//	GetSpecContacts( pAABB, (AABB *) pOBB );
-	//}
-	//else if ( feq( cosf( pOBB->fTheta ), 0 ) )
-	//{
-	//	// Temporarily flip the half-dims
-	//	std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
-	//	auto ret = GetSpecContacts( pAABB, (AABB *) pOBB );
-	//	std::swap( pOBB->boxData.v2HalfDim.x, pOBB->boxData.v2HalfDim.y );
-	//	ret;
-	//}
-	
-	// Find the best face-vertex pair between the two
-	FaceVertexPair fp( (OBB *) pAABB, pOBB );
-
-	// Project the two vertices of the face feature onto
-	// the edge formed by two vertices of the vertex feature
-
-	// Get the contact normal
-	vec2 cN = GetNormal( fp.pBestFace, fp.ixBestFace );
-
-	// The face edge
-	vec2 v2F_e0 = GetVert( fp.pBestFace, fp.ixBestFace );
-	vec2 v2F_e1 = GetVert( fp.pBestFace, fp.ixBestFace +1 );
-
-	// The vertex edge (reversed because we want this CCW)
-	vec2 v2V_e0 = GetVert( fp.pBestVert, fp.ixBestVert);
-	vec2 v2V_e1 = GetVert( fp.pBestVert, fp.ixBestVert +1);
-
-	// The vertex contact positions are the projection of
-	// the two face vertices along the edge formed by V_p0,p1
-	vec2 v2V_p1 = projectOnEdge( v2F_e0, v2V_e0, v2V_e1 );
-	vec2 v2V_p0 = projectOnEdge( v2F_e1, v2V_e0, v2V_e1 );
-
-	// We have to special case the two face contact positions
-	vec2 v2F_p0, v2F_p1;
-	if ( fp.pBestFace == pAABB )
-	{
-		// If the AABB is the face feature object,
-		// the two contact points are the midpoint
-		// of the face (so the collision doesn't lose
-		// any energy to a rotation that can't occur)
-		v2F_p0 = v2F_p1 = 0.5f * (v2F_e0 + v2F_e1);
-	}
-	else
-	{
-		// If the AABB is the vertex feature object,
-		// The face contact positions are the projections
-		// of the two vertex edge points on the face edge
-		v2F_p0 = projectOnEdge( v2V_e0, v2F_e0, v2F_e1 );
-		v2F_p1 = projectOnEdge( v2V_e1, v2F_e0, v2F_e1 );
-	}
-
-	// The contact distances are the projections of the
-	// distance between contact points along face normal
-	float fDist0 = glm::dot( cN, v2V_p0 - v2F_p0 );
-	float fDist1 = glm::dot( cN, v2V_p1 - v2F_p1 );
-
-	if ( glm::distance2( v2V_p0, v2V_p1 ) < kEPS )
-		return{ Contact( fp.pBestFace, fp.pBestVert, v2F_p0,  v2V_p0, cN, fDist0 ) };
-
-	//std::cout << glm::vec2( fDist0, fDist1 ) << std::endl;
-
-	// Construct the contact and get out
-	return{
-		Contact( fp.pBestFace, fp.pBestVert, v2F_p0,  v2V_p0, cN, fDist0 ),
-		Contact( fp.pBestFace, fp.pBestVert, v2F_p1,  v2V_p1, cN, fDist1 ),
-	};
+	// I do think there is some optimization to be had here,
+	// but for now what works is to treat the AABB as if it was an
+	// OBB. This is bad for reasons of efficiency due to the expense
+	//  of the test and correctness to the the AABB's inability to rotate
+	return GetSpecContacts( (OBB *) pAABB, pOBB );
 }
 
 ////////////////////////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@ import pylScene
 import pylDrawable
 import pylShader
 import pylCamera
-import pylRigidBody2D
+import pylRigidBody2D as pylRB2D
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/sdl2')
@@ -32,48 +32,67 @@ def InitEntities(cScene, loopManager):
     # Returna list of entities
     liEntities = []
 
-    liPos = [[-5,0],[0,.5]]#,[5,-4],[-1,-5]]
-    liVel = [[-v[0], 0] for v in liPos]
-
     # Add one entity for each state, as an OBB and a state as its sound component
     nodes = loopManager.GetStateGraph().G.nodes()
     dTH = 2 * math.pi / len(nodes)
-    for i, pos, vel, s in zip(range(len(nodes)), liPos, liVel, nodes):
-        #th = i * dTH - math.pi/2
-        #pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
-        #vel = [-p for p in pos]
-        scale = [1., 1.]
+    for idx, soundNode in zip(range(len(nodes)), nodes):
+        # We're going to start them off in a circle 
+        th = idx * dTH - math.pi/2
+        pos = [15*math.cos(th)/2, 15*math.sin(th)/2]
+
+        # Velocity is toward origin
+        vel = [-2*p for p in pos]
+
+        # Pick a random scale between 0.4 and 2.5 
+        scale = [random.uniform(0.4, 2.5) for i in range(2)]
+
+        # Elasticty is uniformly 1, mass is random between same range as scale
+        elast = 1.
+        mass = random.uniform(0.4, 2.5)
+
+        # Color is the sound state color
         clr = DrawableLoopState.clrOff
-        if s == loopManager.GetStateGraph().activeState:
+        if soundNode == loopManager.GetStateGraph().activeState:
             clr = DrawableLoopState.clrPlaying
-        if i%2:
-            rbArgs = (pylRigidBody2D.rbtOBB, vel, pos, 1., 1., { 'w' : scale[0],
-                                                                  'h' : scale[1],
-                                                                  'th' : 0.})
-        #    drArgs = ('../models/quad.iqm', pos, scale, clr)
+
+        # Choose a collision primitive at random
+        prim = random.choice([pylRB2D.rbtOBB, pylRB2D.rbtAABB, pylRB2D.rbtCircle])
+
+        # These are the arguments passed to the creation functions
+        # minus a few parameters (filled in below)
+        rbArgs = [prim, vel, pos, mass, elast, None]
+        drArgs = [None, pos, scale, clr]
+
+        # Fill in missing parameters (detail map for rb, IQM file for dr)
+        # OBBs need widtih, height, angle (chosen at random) and quad for IQM
+        if prim == pylRB2D.rbtOBB:
+            rbArgs[-1] = { 'w' : scale[0], 'h' : scale[1],
+                            'th' : random.uniform(0., 1.)}
+            drArgs[0] = '../models/quad.iqm'
+
+        # AABB is similar, but no angle
+        elif prim == pylRB2D.rbtAABB:
+            rbArgs[-1] = { 'w' : scale[0], 'h' : scale[1]}
+            drArgs[0] = '../models/quad.iqm'
+
+        # Circles have a circle model file and a radius
+        elif prim == pylRB2D.rbtCircle:
+            # The scale for circles must be uniform
+            scale = [max(scale) for i in range(len(scale))]
+            rbArgs[-1] = {'r' : scale[0]/2.}
+            # reconstruct drArgs with new scale
+            drArgs[2] = scale
+            drArgs[0] = '../models/circle.iqm'
+
+        # Something horrible has happened
         else:
-            rbArgs = (pylRigidBody2D.rbtAABB, vel, pos, 1., 1., { 'w' : scale[0],
-                                                                  'h' : scale[1],
-                                                                  'th' : 0.})
-        drArgs = ('../models/quad.iqm', pos, scale, clr)
-        liEntities.append(Entity.Entity( cScene, cScene.AddRigidBody(*rbArgs), cScene.AddDrawable(*drArgs), s))
-        #eType, vel, pos, 1., 1., {
-        #                                                          'w' : scale[0],
-        #                                                          'h' : scale[1],
-        #                                                          'th' : 0.}),         
-        #    cScene.AddDrawable(strModel, pos, scale, clr),
-        #    s))
+            raise RuntimeError('Error: Invalid collision primitive!')
 
-    # Add nCircles entities, giving each a voice as its sound component
-    #nCircles = 10
-    #for i in range(nCircles):
-    #    vIdx = loopManager.AddVoice('voice.wav')
-    #    liEntities.append(Entity.Entity( cScene,
-    #        cScene.AddRigidBody(pylRigidBody2D.rbtCircle, [0.,0.], [0.,0.], 1., 1., {'r' : 1.}),
-    #        cScene.AddDrawable('circle.iqm', [0., 0.], [1., 1.], [1., 0., 1., 1.]),
-    #        vIdx))
-
-    #liEntities.append(Entity.Entity(cScene, cScene.AddRigidBody(pylRigidBody2D.rbtAABB
+        # Construct the entity and append it to the list
+        liEntities.append(Entity.Entity(cScene, 
+                          cScene.AddRigidBody(*rbArgs),
+                          cScene.AddDrawable(*drArgs),
+                          soundNode))
 
     # return the list
     return liEntities 
