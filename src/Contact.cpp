@@ -36,6 +36,10 @@ Contact::Contact( RigidBody2D * pA, RigidBody2D * pB, const vec2 posA, const vec
 	float fDenom( 0.f );
 	for ( size_t i = 0; i < 2; i++ )
 	{
+		// Skip anything with a negative mass
+		if ( m_pCollidingPair[i]->fMass < 0 )
+			continue;
+
 		// The radius arm is the vector from the object's center to the contact
 		m_v2Radius[i] = perp( m_v2Pos[i] - m_pCollidingPair[i]->v2Center );
 
@@ -72,6 +76,10 @@ void Contact::ApplyImpulse( float fMag )
 
 	for ( int i = 0; i < 2; i++ )
 	{
+		// Skip anything with a negative mass
+		if ( m_pCollidingPair[i]->fMass < 0 )
+			continue;
+
 		const float sgn = i == 0 ? 1.f : -1.f;
 		m_pCollidingPair[i]->v2Vel += sgn * v2Impulse / m_pCollidingPair[i]->fMass;
 		m_pCollidingPair[i]->fOmega += sgn * glm::dot(v2Impulse, m_v2Radius[i]) / m_pCollidingPair[i]->GetInertia();

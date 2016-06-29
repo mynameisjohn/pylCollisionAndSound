@@ -38,7 +38,7 @@ def InitEntities(cScene, loopManager):
     for idx, soundNode in zip(range(len(nodes)), nodes):
         # We're going to start them off in a circle 
         th = idx * dTH - math.pi/2
-        pos = [15*math.cos(th)/2, 15*math.sin(th)/2]
+        pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
 
         # Velocity is toward origin
         vel = [-2*p for p in pos]
@@ -56,33 +56,25 @@ def InitEntities(cScene, loopManager):
             clr = DrawableLoopState.clrPlaying
 
         # Choose a collision primitive at random
-        prim = random.choice([pylRB2D.rbtOBB, pylRB2D.rbtAABB, pylRB2D.rbtCircle])
-
-        # These are the arguments passed to the creation functions
-        # minus a few parameters (filled in below)
-        rbArgs = [prim, vel, pos, mass, elast, None]
-        drArgs = [None, pos, scale, clr]
+        prim = random.choice([pylRB2D.rbtOBB, pylRB2D.rbtCircle])
 
         # Fill in missing parameters (detail map for rb, IQM file for dr)
         # OBBs need widtih, height, angle (chosen at random) and quad for IQM
         if prim == pylRB2D.rbtOBB:
-            rbArgs[-1] = { 'w' : scale[0], 'h' : scale[1],
-                            'th' : random.uniform(0., 1.)}
-            drArgs[0] = '../models/quad.iqm'
+            detailMap = { 'w' : scale[0], 'h' : scale[1], 'th' : random.uniform(0., 1.)}
+            iqmFile = '../models/quad.iqm'
 
         # AABB is similar, but no angle
         elif prim == pylRB2D.rbtAABB:
-            rbArgs[-1] = { 'w' : scale[0], 'h' : scale[1]}
-            drArgs[0] = '../models/quad.iqm'
+            detailMap = { 'w' : scale[0], 'h' : scale[1]}
+            iqmFile = '../models/quad.iqm'
 
         # Circles have a circle model file and a radius
         elif prim == pylRB2D.rbtCircle:
             # The scale for circles must be uniform
             scale = [max(scale) for i in range(len(scale))]
-            rbArgs[-1] = {'r' : scale[0]/2.}
-            # reconstruct drArgs with new scale
-            drArgs[2] = scale
-            drArgs[0] = '../models/circle.iqm'
+            detailMap = {'r' : scale[0]/2.}
+            iqmFile = '../models/circle.iqm'
 
         # Something horrible has happened
         else:
@@ -90,9 +82,16 @@ def InitEntities(cScene, loopManager):
 
         # Construct the entity and append it to the list
         liEntities.append(Entity.Entity(cScene, 
-                          cScene.AddRigidBody(*rbArgs),
-                          cScene.AddDrawable(*drArgs),
+                          cScene.AddRigidBody(prim, vel, pos, mass, elast, detailMap),
+                          cScene.AddDrawable(iqmFile, pos, scale, clr),
                           soundNode))
+
+    # Create some non-entity walls
+    wallPos = [[-10, 0], [10, 0], [0, -10], [0, 10]]
+    wallDim = [[1, 20], [1, 20], [20, 1], [20, 1]]
+    for wP, wD in zip(wallPos, wallDim):
+        cScene.AddRigidBody(pylRB2D.rbtAABB, [0, 0], wP, -1, 1, {'w':wD[0], 'h':wD[1]} )
+        cScene.AddDrawable('../models/quad.iqm', wP, wD, [0,0,0,1])
 
     # return the list
     return liEntities 

@@ -8,6 +8,10 @@
 // Euler integrate rigid body translation/rotation
 void RigidBody2D::EulerAdvance( float fDT )
 {
+	// Skip anything with a negative mass
+	if ( fMass < 0 )
+		return;
+
 	// You should try Verlet...
 	v2Center += fDT * v2Vel;
 

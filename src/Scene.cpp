@@ -96,6 +96,10 @@ void Scene::Update()
 	{
 		for ( auto itInner = itOuter + 1; itInner != m_vRigidBodies.end(); ++itInner )
 		{
+			// Skip if both have negative mass
+			if ( itOuter->fMass < 0 && itInner->fMass < 0 )
+				continue;
+
 			std::list<Contact> liNewContacts = RigidBody2D::GetSpeculativeContacts( &*itOuter, &*itInner );
 			m_liSpeculativeContacts.splice( m_liSpeculativeContacts.end(), liNewContacts );
 		}
