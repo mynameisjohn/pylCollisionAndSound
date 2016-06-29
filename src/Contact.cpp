@@ -195,7 +195,7 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 			float fVelToRemove = fRelVN + fVelNeeded;
 
 			// If this is very low
-			if ( fVelToRemove < -kEPS )
+			if ( fVelToRemove < kEPS )
 			{
 				// apply a collison along the normal
 				float impulseMag = fCr_1 * fRelVN * c.GetInertialDenom();

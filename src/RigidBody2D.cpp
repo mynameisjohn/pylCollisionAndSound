@@ -17,6 +17,8 @@ void RigidBody2D::EulerAdvance( float fDT )
 
 	if ( eType == EType::OBB )
 		fTheta += fDT * fOmega;
+
+	v2Vel.y -= 28.f * fDT;
 }
 
 RigidBody2D::RigidBody2D() :

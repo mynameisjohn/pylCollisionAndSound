@@ -38,6 +38,12 @@ std::list<Contact> GetSpecContacts( Circle * pA, Circle * pB )
 	// distance between circumferences
 	float dist = glm::length( a_pos - b_pos );
 
+	if ( IsOverlapping( pA, pB ) )
+	{
+		dist = -dist;
+		// std::cout << "Negating circle dist" << std::endl;
+	}
+
 	// Construct and return
 	return{ Contact( pA, pB, a_pos, b_pos, n, dist ) };
 }
