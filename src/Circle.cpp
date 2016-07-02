@@ -131,7 +131,8 @@ std::list<Contact> GetSpecContacts( Circle * pCirc, OBB * pOBB )
 	vec2 b_pos = pOBB->WorldSpaceClamp( pCirc->v2Center );
 	vec2 n = glm::normalize( b_pos - pCirc->v2Center );
 	vec2 a_pos = pCirc->v2Center + n * pCirc->circData.fRadius;
-	float fDist = glm::distance( a_pos, b_pos );
+	
+	float fDist = glm::dot( b_pos - a_pos, n ); //glm::distance( a_pos, b_pos );
 	
 	// Construct and return
 	return{ Contact( pCirc, pOBB, a_pos, b_pos, n, fDist ) };
