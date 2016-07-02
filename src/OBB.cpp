@@ -146,7 +146,7 @@ void JudgeFeatures( OBB * pFace, OBB * pVertex, FeaturePair * pMostSep, FeatureP
 			float fCenterDist2 = glm::distance2( aSupportVerts[j].v, pFace->v2Center );
 
 			// If the projection has a positive value, we are separated
-			if ( fDist2 > 0 )
+			if ( fDist > 0 )
 			{
 				// The real distance between the vertex and face is the projection
 				// of the origin onto the minkowski face (like GJK, I think)
@@ -181,8 +181,11 @@ void JudgeFeatures( OBB * pFace, OBB * pVertex, FeaturePair * pMostSep, FeatureP
 				}
 			}
 			// If the projected value was negative, we are penetrating
-			else
+			else if ( IsPointInside( aSupportVerts[j].v, pFace ) )
 			{
+				// Negate distance squared, it opposes the normal
+				fDist2 = -fDist2;
+
 				// We want the greatest penetration distance
 				if ( fDist2 > pMostPen->fDist2 )
 				{
@@ -327,9 +330,10 @@ glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 bool IsPointInside( vec2 p, OBB * pOBB )
 {
 	glm::vec2 d = p - pOBB->v2Center;
-	glm::vec2 xHat( cosf( pOBB->fTheta ), sinf( pOBB->fTheta ) );
+	glm::vec2 xHat = GetNormal( pOBB, 0 );
+	glm::vec2 yHat = perp( xHat );
 	bool bX = fabs( glm::dot( d, xHat ) ) < pOBB->boxData.v2HalfDim.x;
-	bool bY = fabs( glm::dot( d, perp( xHat ) ) ) < pOBB->boxData.v2HalfDim.y;
+	bool bY = fabs( glm::dot( d, yHat ) ) < pOBB->boxData.v2HalfDim.y;
 	return bX && bY;
 }
 
