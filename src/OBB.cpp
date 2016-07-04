@@ -329,6 +329,9 @@ glm::vec2 OBB::WorldSpaceClamp( const glm::vec2 p ) const
 
 bool IsPointInside( vec2 p, OBB * pOBB )
 {
+	if ( pOBB->eType == RigidBody2D::EType::AABB )
+		return IsPointInside( p, (AABB *) pOBB );
+
 	glm::vec2 d = p - pOBB->v2Center;
 	glm::vec2 xHat = GetNormal( pOBB, 0 );
 	glm::vec2 yHat = perp( xHat );

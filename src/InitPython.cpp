@@ -47,6 +47,9 @@ bool ExposeScene()
 
 	AddMemFnToMod( pModDef, Scene, GetQuitFlag, bool );
 	AddMemFnToMod( pModDef, Scene, SetQuitFlag, void, bool );
+	AddMemFnToMod( pModDef, Scene, GetPauseCollision, bool );
+	AddMemFnToMod( pModDef, Scene, SetPauseCollision, void, bool );
+	AddMemFnToMod( pModDef, Scene, GetDrawContacts, bool );
 	AddMemFnToMod( pModDef, Scene, SetDrawContacts, void, bool );
 
 	AddMemFnToMod( pModDef, Scene, Update, void );
@@ -154,7 +157,8 @@ bool ExposeSoundManager()
 	AddMemFnToMod( pModDef, SoundManager, GetNumBufsCompleted, size_t );
 	AddMemFnToMod( pModDef, SoundManager, GetNumSamplesInClip, size_t, std::string, bool );
 	AddMemFnToMod( pModDef, SoundManager, Init, bool, std::map<std::string, int> );
-	AddMemFnToMod( pModDef, SoundManager, PlayPause, bool, bool );
+	AddMemFnToMod( pModDef, SoundManager, GetPlayPause, bool );
+	AddMemFnToMod( pModDef, SoundManager, SetPlayPause, void, bool );
 
 	// These are static functions, so we don't need the macro (doesn't mean there shouldn't be one...)
 	pModDef->RegisterFunction<struct st_fnSmSendMessage>( "SendMessage", make_function( SendMessage ) );

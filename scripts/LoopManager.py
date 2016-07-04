@@ -200,7 +200,7 @@ class LoopManager:
 
     # Toggles the play/pause state of the c loop manager
     def PlayPause(self, bPlayPause):
-        self.cSM.PlayPause(bPlayPause)
+        self.cSM.SetPlayPause(bPlayPause)
 
     # returns an instance to the actual state graph
     def GetStateGraph(self):
@@ -216,7 +216,7 @@ class LoopManager:
     # Called every frame, looks at the current stimulus and
     # sample position and determines if either the graph state
     # should advance or if the active loop sequences should advance
-    def Update(self):
+    def Update(self, engine):
         # Determine how many buffers have advanced, calculate increment
         # (this involves update the C++ Loop Manager, which locks a mutex)
         uCurNumBufs = self.cSM.GetNumBufsCompleted()
@@ -237,6 +237,8 @@ class LoopManager:
 
         # If the pending state is changing
         if nextState is not self.nextState:
+           
+
             # Set the original pending state's color to off (if not active)
             if self.nextState is not curState:
                 self.nextState.UpdateDrColor(self.cScene, DrawableLoopState.clrOff)
@@ -278,6 +280,8 @@ class LoopManager:
         # If no loop changes, get out
         if bAnythingDone == False:
             return
+
+        engine.ClearColCount()
 
         # Compute the sets of loop changes (do I need to store curSet?)
         curSet = set(curState.GetActiveLoopGen())

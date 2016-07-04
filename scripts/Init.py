@@ -23,19 +23,19 @@ import Engine
 import Entity
 
 def InitEntities(cScene, loopManager):
-    # Iterate loopmanager states
-    # Create entities for each state
-    # Also create entites that have
-    # space reserved for voices, and play
-    # those via a OneShot message
-
-    # Returna list of entities
+    # Return a list of entities
     liEntities = []
 
     # Add one entity for each state, as an OBB and a state as its sound component
     nodes = loopManager.GetStateGraph().G.nodes()
-    dTH = 2 * math.pi / len(nodes)
-    for idx, soundNode in zip(range(len(nodes)), nodes):
+
+    # We'll be creating two colliding objects for every node
+    # in the graph, starting out in a circle (hence dTH)
+    N = 2*len(nodes)
+    dTH = 2 * math.pi / N
+    
+    # Create entities from the nodes in the graph
+    for idx, soundNode in zip(range(N), itertools.cycle(nodes)):
         # We're going to start them off in a circle 
         th = idx * dTH - math.pi/2
         pos = [10*math.cos(th)/2, 10*math.sin(th)/2]
@@ -129,6 +129,7 @@ def InitLoopManager(cScene):
             Loop('lead7', 'lead7.wav')], itertools.cycle)
     })
 
+    # Some more states, these ones have no sustain or lead
     s4 = DrawableLoopState('Four', { lSeq_bass, lSeq_drums})
     s5 = DrawableLoopState('Five', { lSeq_bass, LoopSequence('drums2', [Loop('drum2', 'drum2.wav')])})
 
@@ -148,9 +149,12 @@ def InitLoopManager(cScene):
         return max(SG.G.out_edges_iter(SG.activeState, data = True), key = lambda edge : dot(SG.stim, edge[2]['pathVec']))[1]
     
     # Define the vectors between edges 
-    # (used during dot product calculation, SG.stim is one of these)
+    # (used during dot product calculation, the pathVec most in line with SG.stim is chosen)
     diEdges = {n : [1 if n == nn else 0 for nn in nodes] for n in nodes}
     for n in nodes:
+        # Give each node its input stim as an attribute
+        n.inputStim = diEdges[n]
+        # and connect each neigbor by an edge with that input stim
         for nn in G.neighbors(n):
             G[n][nn]['pathVec'] = diEdges[nn]
 
@@ -203,28 +207,33 @@ def InitLoopManager(cScene):
     # the edge vectors are used during state advancement for the graph
     diKeyToStim = {SDLK.SDLK_1 + i : diEdges[n] for i, n in zip(range(len(nodes)), nodes)}
 
-    # The stimulus update function assigns the stim
-    # member of the stategraph based on what the
-    # button maps to in the dict
-    def fnStimKey(btn, keyMgr):
-        nonlocal diKeyToStim
-        nonlocal SG
-        if btn.code in diKeyToStim.keys():
-            SG.stim = diKeyToStim[btn.code]
-    liButtons = [Button(k, None, fnStimKey) for k in diKeyToStim.keys()]
+    ## The stimulus update function assigns the stim
+    ## member of the stategraph based on what the
+    ## button maps to in the dict
+    #def fnStimKey(btn, keyMgr):
+    #    nonlocal diKeyToStim
+    #    nonlocal SG
+    #    if btn.code in diKeyToStim.keys():
+    #        SG.stim = diKeyToStim[btn.code]
 
-    arpClip = Loop('arp', 'arplead1.wav', 5, 1.,'arplead1.wav')
-    arpClip.voiceID = voiceID + 1
-    if cSM.RegisterClip(arpClip.name, '../audio/'+arpClip.headFile, '../audio/'+arpClip.tailFile, int(sampPerMS * arpClip.fadeMS)) == False:
-        raise IOError(arpClip.name)
+    # Toggle contact display with the 'C' key
+    def fnToggleContactVis(btn, keyMgr):
+        nonlocal cScene
+        cScene.SetDrawContacts(not(cScene.GetDrawContacts()))
+    liButtons = [Button(SDLK.SDLK_c, None, fnToggleContactVis) ]
 
-    # Hard coded test for now
-    def fnOneShotKey(btn, keyMgR):
-        nonlocal cSM
-        nonlocal arpClip
-        t = (arpClip.name, arpClip.voiceID, arpClip.vol, int(cSM.GetMaxSampleCount() / 4))
-        pylSoundManager.SendMessage(cSM.c_ptr, (pylSoundManager.CMDOneShot, t))
-    liButtons.append(Button(SDLK.SDLK_f, None, fnOneShotKey))
+    # Play a one shot arp patter with the 'f' key (for testing)
+    #arpClip = Loop('arp', 'arplead1.wav', 5, 1.,'arplead1.wav')
+    #arpClip.voiceID = voiceID + 1
+    #if cSM.RegisterClip(arpClip.name, '../audio/'+arpClip.headFile, '../audio/'+arpClip.tailFile, int(sampPerMS * arpClip.fadeMS)) == False:
+    #    raise IOError(arpClip.name)
+
+    #def fnOneShotKey(btn, keyMgR):
+    #    nonlocal cSM
+    #    nonlocal arpClip
+    #    t = (arpClip.name, arpClip.voiceID, arpClip.vol, int(cSM.GetMaxSampleCount() / 4))
+    #    pylSoundManager.SendMessage(cSM.c_ptr, (pylSoundManager.CMDOneShot, t))
+    #liButtons.append(Button(SDLK.SDLK_f, None, fnOneShotKey))
 
     # The escape key callback tells the scene to quit
     def fnEscapeKey(btn, keyMgr):
@@ -233,16 +242,19 @@ def InitLoopManager(cScene):
     liButtons.append(Button(SDLK.SDLK_ESCAPE, None, fnEscapeKey))
 
     # The space key callback tells the loop manager to play/pause
+    # as well as the rigid simulation (no integration or solving takes place)
     def fnSpaceKey(btn, keyMgr):
         nonlocal cSM
-        cSM.PlayPause()
+        nonlocal cScene
+        cScene.SetPauseCollision(not(cScene.GetPauseCollision()))
+        cSM.SetPlayPause(not(cSM.GetPlayPause()))
     liButtons.append(Button(SDLK.SDLK_SPACE, None, fnSpaceKey))
 
     # Create the input manager (no mouse manager needed)
     inputManager = InputManager(cScene, KeyboardManager(liButtons), MouseManager([]))
 
     # Create the sound manager
-    loopManager = LoopManager(cScene, SG, inputManager)
+    loopManager = LoopManager(cScene, SG, inputManager) 
 
     # Start the active loop seq
     activeState = loopManager.GetStateGraph().GetActiveState()

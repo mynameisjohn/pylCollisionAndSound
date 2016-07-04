@@ -199,6 +199,8 @@ uint32_t Contact::Solver::Solve( std::list<Contact>& liContacts )
 			{
 				// apply a collison along the normal
 				float impulseMag = fCr_1 * fRelVN * c.GetInertialDenom();
+				if ( c.GetDistance() < 0 && fRelVN > 0 && c.GetBodyA()->fMass > 0 && c.GetBodyB()->fMass > 0 )
+					impulseMag = -(.05f * c.GetInertialDenom());
 				c.ApplyImpulse( impulseMag );
 
 				// Increase collision counter, flag contact as colliding

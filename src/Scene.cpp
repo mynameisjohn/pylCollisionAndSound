@@ -8,6 +8,7 @@
 Scene::Scene() :
 	m_bQuitFlag( false ),
 	m_bDrawContacts( false ),
+	m_bPauseCollision( false ),
 	m_GLContext( nullptr ),
 	m_pWindow( nullptr ),
 	m_ContactSolver( 10 )
@@ -78,40 +79,44 @@ void Scene::Update()
 	// Update the sound manager (should this happen here?)
 	m_SoundManager.Update();
 
-	// Reset the contact list and find contacts
-	int nCollisions( 0 );
-	float fTotalEnergy( 0.f );
-	m_liSpeculativeContacts.clear();
-
-	// Integrate objects
-	for ( RigidBody2D& rb : m_vRigidBodies )
-		rb.EulerAdvance( g_fTimeStep );
-
-	// Get out if there's less than 2
-	if ( m_vRigidBodies.size() < 2 )
-		return;
-
-	// Check every one against the other
-	for ( auto itOuter = m_vRigidBodies.begin(); itOuter != m_vRigidBodies.end(); ++itOuter )
+	// If we haven't paused the RB simulation)
+	if ( m_bPauseCollision == false )
 	{
-		for ( auto itInner = itOuter + 1; itInner != m_vRigidBodies.end(); ++itInner )
-		{
-			// Skip if both have negative mass
-			if ( itOuter->fMass < 0 && itInner->fMass < 0 )
-				continue;
+		// Reset the contact list and find contacts
+		int nCollisions( 0 );
+		float fTotalEnergy( 0.f );
+		m_liSpeculativeContacts.clear();
 
-			std::list<Contact> liNewContacts = RigidBody2D::GetSpeculativeContacts( &*itOuter, &*itInner );
-			m_liSpeculativeContacts.splice( m_liSpeculativeContacts.end(), liNewContacts );
+		// Integrate objects
+		for ( RigidBody2D& rb : m_vRigidBodies )
+			rb.EulerAdvance( g_fTimeStep );
+
+		// Get out if there's less than 2
+		if ( m_vRigidBodies.size() < 2 )
+			return;
+
+		// Check every one against the other
+		for ( auto itOuter = m_vRigidBodies.begin(); itOuter != m_vRigidBodies.end(); ++itOuter )
+		{
+			for ( auto itInner = itOuter + 1; itInner != m_vRigidBodies.end(); ++itInner )
+			{
+				// Skip if both have negative mass
+				if ( itOuter->fMass < 0 && itInner->fMass < 0 )
+					continue;
+
+				std::list<Contact> liNewContacts = RigidBody2D::GetSpeculativeContacts( &*itOuter, &*itInner );
+				m_liSpeculativeContacts.splice( m_liSpeculativeContacts.end(), liNewContacts );
+			}
+
+			// Increment total energy while we're at it
+			fTotalEnergy += itOuter->GetKineticEnergy();
 		}
 
-		// Increment total energy while we're at it
-		fTotalEnergy += itOuter->GetKineticEnergy();
+		//std::cout << fTotalEnergy << std::endl;
+
+		// Solve contacts
+		m_ContactSolver.Solve( m_liSpeculativeContacts );
 	}
-
-	// std::cout << fTotalEnergy << std::endl;
-
-	// Solve contacts
-	m_ContactSolver.Solve( m_liSpeculativeContacts );
 }
 
 int Scene::AddDrawable( std::string strIqmFile, vec2 T, vec2 S, vec4 C )
@@ -213,9 +218,24 @@ bool Scene::GetQuitFlag() const
 	return m_bQuitFlag;
 }
 
+void Scene::SetPauseCollision( bool bPauseCollision )
+{
+	m_bPauseCollision = bPauseCollision;
+}
+
+bool Scene::GetPauseCollision() const
+{
+	return m_bPauseCollision;
+}
+
 void Scene::SetDrawContacts( bool bDrawContacts )
 {
 	m_bDrawContacts = bDrawContacts;
+}
+
+bool Scene::GetDrawContacts() const
+{
+	return m_bDrawContacts;
 }
 
 bool Scene::InitDisplay( std::string strWindowName, uint32_t glMajor, uint32_t glMinor, uint32_t iScreenW, uint32_t iScreenH, vec4 v4ClearColor )

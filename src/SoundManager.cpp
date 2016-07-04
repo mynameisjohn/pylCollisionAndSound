@@ -250,23 +250,27 @@ bool SoundManager::Init( std::map<std::string, int> mapAudCfg )
 	return true;
 }
 
+bool SoundManager::GetPlayPause() const
+{
+	return m_bPlaying;
+}
+
 // TODO Have this send a message telling all loops to fade to silence
 // without blowing out sample position, and actually pause once that's done
-bool SoundManager::PlayPause( bool bPlayPause )
+void SoundManager::SetPlayPause( bool bPlayPause )
 {
 	// This gets set if configure is successful
-	if ( m_pAudioSpec->userdata == nullptr )
-		return false;
+	if ( m_pAudioSpec->userdata )
+	{
 
-	// Toggle audio playback (and bool)
-	m_bPlaying = bPlayPause;
+		// Toggle audio playback (and bool)
+		m_bPlaying = bPlayPause;
 
-	if ( m_bPlaying )
-		SDL_PauseAudio( 0 );
-	else
-		SDL_PauseAudio( 1 );
-
-	return true;
+		if ( m_bPlaying )
+			SDL_PauseAudio( 0 );
+		else
+			SDL_PauseAudio( 1 );
+	}
 }
 
 size_t SoundManager::GetSampleRate() const

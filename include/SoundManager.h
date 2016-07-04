@@ -57,7 +57,8 @@ public:
 	void Update();
 
 	// Play / Pause the audio device
-	bool PlayPause( bool bPlayPause );
+	bool GetPlayPause() const;
+	void SetPlayPause( bool bPlayPause );
 
 	// Various gets
 	size_t GetMaxSampleCount() const;

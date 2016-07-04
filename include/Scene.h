@@ -24,6 +24,10 @@ public:
 	bool GetQuitFlag() const;
 
 	void SetDrawContacts( bool bDrawContacts );
+	bool GetDrawContacts() const;
+
+	void SetPauseCollision( bool bPauseCollision );
+	bool GetPauseCollision() const;
 
 	const Shader * GetShaderPtr() const;
 	const Camera * GetCameraPtr() const;
@@ -42,6 +46,7 @@ public:
 private:
 	bool m_bQuitFlag;
 	bool m_bDrawContacts;
+	bool m_bPauseCollision;
 	SDL_GLContext m_GLContext;
 	SDL_Window * m_pWindow;
 	Shader m_Shader;
